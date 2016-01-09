@@ -1,0 +1,207 @@
+use std
+
+use "ast.use"
+use "stab.use"
+use "types.use"
+use "tokdefs.use"
+use "tok.use"
+use "util.use"
+
+pkg parse =
+	const tsfile	: (ts : tokstream# -> file#)
+;;
+
+const tsfile = {ts
+	var f
+
+	f = std.mk([
+		.uses = [][:],
+		.libs = [][:],
+		.extlibs = [][:],
+		.dcls = [][:],
+		.extinit = [][:],
+		.init = `std.None,
+		.globls = mkstab(),
+		.builtin = mkstab(),
+		.ns = std.mkht(std.strhash, std.streq),
+	])
+	f.globls.super = `std.Some f.builtin
+	optendlns(ts)
+	while true
+		match tokpeek(ts)
+		| (l, `Teof):	
+			break
+		| (l, `Tuse):
+			usestmt(ts, f)
+		| (l, `Tpkg):
+			pkgdef(ts, f)
+		| (l, `Ttrait):
+			traitdef(ts, f)
+		| (l, `Ttype):
+			tydef(ts, f)
+		| (l, tok):	
+			if !dcl(ts, ts)
+				err(l, "invalid top level item near {}", tok)
+			;;
+		;;
+		endlns(ts)
+	;;
+	-> f
+}
+
+const usestmt = {ts, f
+	match toknext(ts)
+	| (l, `Tuse): /* ok */
+	| (l, t):	err(l, "unexpected token in use {}\n", t)
+	;;
+
+	match toknext(ts)
+	| (l, `Tstrlit str):	f.uses = std.slpush(f.uses, `Ulocal str)
+	| (l, `Tident id):	f.uses = std.slpush(f.uses, `Ulib id)
+	| (l, t):	err(l, "unexpected {} after use\n", t)
+	;;
+}
+
+const pkgdef = {ts, f
+	match toknext(ts)
+	| (l, `Tpkg):	/* ok */
+	| (l, t):	err(l, "unexpected token in pkg {}\n", t)
+	;;
+
+	match toknext(ts)
+	| (l, `Tident id):	setpkg(f, f.globls, id)
+	| (l, `Tgap):	/* pkg _ */
+	| (l, t):	err(l, "invalid package name {}\n", t)
+	;;
+
+	match toknext(ts)
+	| (l, `Tasn):	/* ok */
+	| (l, t):	err(l, "expected '=' after pkg name, got {}\n", t)
+	;;
+
+	pkgbody(ts, f)
+
+	expectendblk(ts, f)
+}
+
+const pkgbody = {ts, f
+	optendlns(ts)
+}
+
+const traitdef = {ts, f
+}
+
+const tydef = {ts, f
+}
+
+const dcl = {ts, f
+	var attrs, isconst, dcls
+
+	attrs = attrlist(ts)
+
+	match toknext(ts)
+	| (l, `Tconst):	isconst = true
+	| (l, `Tvar):	isconst = false
+	| (l, tok):	
+		if attrs.len == 0
+			-> false
+		;;
+		err(l, "expected const or var after type attribute, got {}\n", tok)
+	;;
+
+	dcls = dcllist(ts, &f.dcls, f.globls)
+	-> true
+}
+
+const attrlist = {ts, dl, st
+	var al
+
+	al = [][:]
+	while true
+		match tokpeek(ts)
+		| (l, `Tattr a):
+			toknext(ts)
+			al = std.slpush(al, a)
+		| _:
+			break
+		;;
+	;;
+	-> al
+}
+
+const dcllist = {ts, dl, st
+	var dcls, reqd
+
+	reqd = true
+	while true
+		dl# = std.slpush(dl#, dclbody(ts))
+		match tokpeek(ts)
+		| (loc, Tcomma):	break
+		| _:
+		;;
+		reqd = false
+	;;
+}
+
+const dclbody = {ts
+	var name, ty, init
+
+	(name, ty) = dclcore(ts)
+
+	match tokpeek(ts)
+	| (l, `Tasn):
+		init = expr(ts)
+	| _:
+	;;
+
+}
+
+const dclcore = {ts
+	var name, ty
+
+	match toknext(ts)
+	| (l, `Tident id):	name = [.ns="", .name=id]
+	| (l, t):	err(l, "expected identifier, got {}\n", t)
+	;;
+
+	/* extern symbols can have a full namespace */
+	match tokpeek(ts)
+	| (l, `Tdot):
+		match toknext(ts)
+		| (l, `Tident id):	name = [.ns=name.name, .name=id]
+		| (l, t):	err(l, "expected identifier after '.', got {}\n", t)
+	;;
+	| (l, t):	/* ok */
+	;;
+
+	match tokpeek(ts)
+	| (l, `Tcolon):
+		ty = vartype(ts)
+	| _:	ty = mktyvar()
+	;;
+
+	-> (name, ty)
+}
+
+const endlns = {ts
+	match tokpeek(ts)
+	| (l, `Tendln):	optendlns(ts)
+	| (l, t):	err(l, "expected \\n, got {}\n", t)
+	;;
+}
+
+const optendlns = {ts
+	while true
+		match tokpeek(ts)
+		| (l, `Tendln):	toknext(ts)
+		| _:	break
+		;;
+	;;
+}
+
+const expectendblk = {ts, f
+	match toknext(ts)
+	| (l, `Tendblk):	/* ok */
+	| (l, t):	err(l, "expected ;; after block, got {}\n", t)
+	;;
+}
