@@ -13,6 +13,7 @@ pkg parse =
 
 const tsfile = {ts
 	var f
+	var t : tok
 
 	f = std.mk([
 		.uses = [][:],
@@ -40,8 +41,10 @@ const tsfile = {ts
 		| (l, `Ttype):
 			tydef(ts, f)
 		| (l, tok):	
-			if !dcl(ts, ts)
-				err(l, "invalid top level item near {}", tok)
+			t = tok
+			std.put("..ok: {}\n", `Tplus)
+			err(l, "invalid top level item near {}", t)
+			if !dcl(ts, f)
 			;;
 		;;
 		endlns(ts)
@@ -94,7 +97,7 @@ const traitdef = {ts, f
 const tydef = {ts, f
 }
 
-const dcl = {ts, f
+const dcl = {ts, f : file#
 	var attrs, isconst, dcls
 
 	attrs = attrlist(ts)
@@ -102,18 +105,19 @@ const dcl = {ts, f
 	match toknext(ts)
 	| (l, `Tconst):	isconst = true
 	| (l, `Tvar):	isconst = false
-	| (l, tok):	
+	| (l, tok):
 		if attrs.len == 0
 			-> false
 		;;
+		std.put("dcl loc: {}\n", l)
 		err(l, "expected const or var after type attribute, got {}\n", tok)
 	;;
 
-	dcls = dcllist(ts, &f.dcls, f.globls)
+	dcls = dcllist(ts, f.globls)
 	-> true
 }
 
-const attrlist = {ts, dl, st
+const attrlist = {ts
 	var al
 
 	al = [][:]
@@ -129,64 +133,46 @@ const attrlist = {ts, dl, st
 	-> al
 }
 
-const dcllist = {ts, dl, st
-	var dcls, reqd
+const dcllist = {ts, st
+	var dl
 
-	reqd = true
+	dl = [][:]
 	while true
-		dl# = std.slpush(dl#, dclbody(ts))
+		dl = std.slpush(dl, dclbody(ts))
 		match tokpeek(ts)
 		| (loc, Tcomma):	break
 		| _:
 		;;
-		reqd = false
 	;;
+	-> dl
 }
 
 const dclbody = {ts
-	var name, ty, init
+	var name
 
-	(name, ty) = dclcore(ts)
+	match tokpeek(ts)
+	| (l, `Tident id):
+		name = id
+		toknext(ts)
+	| (l, tok):
+		err(l, "expected declaration name, got {}\n", tok)
+	;;
 
 	match tokpeek(ts)
 	| (l, `Tasn):
-		init = expr(ts)
+		toknext(ts)
+		/* init = expr(ts) */
 	| _:
+		-> void
 	;;
 
-}
-
-const dclcore = {ts
-	var name, ty
-
-	match toknext(ts)
-	| (l, `Tident id):	name = [.ns="", .name=id]
-	| (l, t):	err(l, "expected identifier, got {}\n", t)
-	;;
-
-	/* extern symbols can have a full namespace */
-	match tokpeek(ts)
-	| (l, `Tdot):
-		match toknext(ts)
-		| (l, `Tident id):	name = [.ns=name.name, .name=id]
-		| (l, t):	err(l, "expected identifier after '.', got {}\n", t)
-	;;
-	| (l, t):	/* ok */
-	;;
-
-	match tokpeek(ts)
-	| (l, `Tcolon):
-		ty = vartype(ts)
-	| _:	ty = mktyvar()
-	;;
-
-	-> (name, ty)
 }
 
 const endlns = {ts
 	match tokpeek(ts)
 	| (l, `Tendln):	optendlns(ts)
-	| (l, t):	err(l, "expected \\n, got {}\n", t)
+	| (l, tok):/*	err(l, "expected \\n, got {}\n", tok) */
+		std.put("{}\n", tok)
 	;;
 }
 

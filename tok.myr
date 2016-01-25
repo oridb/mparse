@@ -76,7 +76,7 @@ const tokpeek = {ts
 }
 
 const tokread = {ts
-	var c, loc
+	var c, loc, id
 
 	skipspace(ts)
 	loc = ts.loc
@@ -97,7 +97,8 @@ const tokread = {ts
 	elif std.isdigit(c)
 		-> (loc, numlit(ts))
 	elif isident(c)
-		-> (loc, kwident(ts))
+		id = kwident(ts)
+		-> (loc, id)
 	else
 		-> (loc, oper(ts))
 	;;
@@ -381,7 +382,7 @@ const kwident = {ts
 	| "var": 	-> `Tvar
 	| "void": 	-> `Tvoidlit
 	| "while": 	-> `Twhile
-	| ident:	-> `Tident ident
+	| ident:	-> `Tident std.sldup(ident)
 	;;
 }
 
@@ -537,7 +538,7 @@ const identstr = {ts
 	;;
 	str = ts.rest[:i]
 	ts.rest = ts.rest[i:]
-	-> std.sldup(str)
+	-> str
 }
 
 const isident = {c

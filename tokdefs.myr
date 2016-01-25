@@ -95,9 +95,9 @@ pkg parse =
 		`Tret     /* -> */
 		`Tuse     /* use */
 		`Tpkg     /* pkg */
+		`Tident byte[:]
 		`Tsizeof  /* sizeof */
 		`Tattr attr   /* $attr */
-		`Tident byte[:]
 	;;
 ;;
 

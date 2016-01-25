@@ -9,10 +9,14 @@ pkg parse =
 ;;
 
 const err = {loc, msg, args
-	var ap
+	var ap, sb, ln
 	
 	ap = std.vastart(&args)
-	verr(loc, msg, &ap)
+	sb = std.mksb()
+	std.sbfmtv(sb, msg, &ap)
+	ln = std.sbfin(sb)
+	std.fatal("{}:{}:{}: {}\n", loc.file, loc.line, loc.col, ln)
+	std.slfree(ln)
 }
 
 const verr = {loc, msg, ap
