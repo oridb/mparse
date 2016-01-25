@@ -84,7 +84,7 @@ const pkgdef = {ts, f
 
 	pkgbody(ts, f)
 
-	expectendblk(ts, f)
+	expectendblk(ts)
 }
 
 const pkgbody = {ts, f
@@ -185,7 +185,7 @@ const optendlns = {ts
 	;;
 }
 
-const expectendblk = {ts, f
+const expectendblk = {ts
 	match toknext(ts)
 	| (l, `Tendblk):	/* ok */
 	| (l, t):	err(l, "expected ;; after block, got {}\n", t)
@@ -232,6 +232,21 @@ const lblstmt = {ts
 	;;
 }
 
+const exprln = {ts
+	expr(ts)
+	expectendln(ts)
+}
+
+
+const optexprln = {ts
+	match tokpeek(ts)
+	| (_, `Tendln):
+	| _:
+		expr(ts)
+	;;
+	expectendln(ts)
+}
+
 const forstmt = {ts
 	var l
 	(l, _) = toknext(ts)
@@ -240,23 +255,10 @@ const forstmt = {ts
 	| (_, `Tvar):
 		dcl(ts)
 	*/
-	| (_, `Tendln):
-	| _:
-		expr(ts)
+	| _: optexprln(ts)
 	;;
-	expectendln(ts)
-	match tokpeek(ts)
-	| (_, `Tendln):
-	| _:
-		expr(ts)
-	;;
-	expectendln(ts)
-	match tokpeek(ts)
-	| (_, `Tendln):
-	| _:
-		expr(ts)
-	;;
-	expectendln(ts)
+	optexprln(ts)
+	optexprln(ts)
 	block(ts)
 }
 
@@ -264,8 +266,7 @@ const ifstmt = {ts
 	var l
 
 	(l, _) = toknext(ts)
-	expr(ts)
-	expectendln(ts)
+	exprln(ts)
 	block(ts)
 }
 
@@ -273,12 +274,29 @@ const matchstmt = {ts
 	var l
 	
 	(l, _) = toknext(ts)
-	expr(ts)
-	expectendln(ts)
+	exprln(ts)
+	matches(ts)
+	expectendblk(ts)
+}
+
+const matches = {ts
 	while true
 		match tokpeek(ts)
 		| (_, `Tbor):
-		| _:	break
+		| (_, `Tendblk):	break
+		| (l, t):	err(l, "expected | or ;; after match, got {}\n", t)
+		;;
+		expr(ts)
+		match toknext(ts)
+		| (_, `Tcolon):
+		| (lcol, t):	err(lcol, "expected : after match expression, got {}\n", t)
+		;;
+		while true
+			match tokpeek(ts)
+			| (_, `Tbor):	break
+			| (_, `Tendblk):	break
+			| _:	stmt(ts)
+			;;
 		;;
 	;;
 }
