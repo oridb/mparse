@@ -186,9 +186,9 @@ pkg parse =
 	;;
 
 	type loopstmt = struct
-		init	: expr#
-		cond	: expr#
-		step	: expr#
+		init	: std.option(expr#)
+		cond	: std.option(expr#)
+		step	: std.option(expr#)
 		body	: block#
 		scope	: stab#
 	;;

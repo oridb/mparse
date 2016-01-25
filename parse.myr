@@ -148,7 +148,7 @@ const dcllist = {ts, st
 }
 
 const dclbody = {ts
-	var name
+	var name, init
 
 	match tokpeek(ts)
 	| (l, `Tident id):
@@ -161,7 +161,7 @@ const dclbody = {ts
 	match tokpeek(ts)
 	| (l, `Tasn):
 		toknext(ts)
-		/* init = expr(ts) */
+		init = expr(ts)
 	| _:
 		-> void
 	;;
@@ -190,4 +190,99 @@ const expectendblk = {ts, f
 	| (l, `Tendblk):	/* ok */
 	| (l, t):	err(l, "expected ;; after block, got {}\n", t)
 	;;
+}
+
+const expectendln = {ts
+	match toknext(ts)
+	| (l, `Tendln):	/* ok */
+	| (l, t):	err(l, "expected ; or new line, got {}\n", t)
+	;;
+}
+
+const stmt = {ts
+	match tokpeek(ts)
+	| (l, `Tfor):	-> forstmt(ts)
+	| (l, `Tif):	-> ifstmt(ts)
+	| (l, `Tmatch):	-> matchstmt(ts)
+	| (l, `Tcolon):	-> lblstmt(ts)
+	| (l, _):	-> expr(ts)
+	;;
+}
+
+const block = {ts
+	var stmts
+	
+	stmts = [][:]
+	while true
+		match tokpeek(ts)
+		| (_, `Tendblk):	break
+		| _:	stmts = std.slpush(stmts, stmt(ts))
+		;;
+	;;
+	toknext(ts)
+}
+
+const lblstmt = {ts
+	var l
+	
+	(l, _) = toknext(ts)
+	match toknext(ts)
+	| (_, `Tident id):	stmt(ts)
+	| (_, t):	err(l, "expected an identifier as a label, got {}\n", t)
+	;;
+}
+
+const forstmt = {ts
+	var l
+	(l, _) = toknext(ts)
+	match tokpeek(ts)
+	/*
+	| (_, `Tvar):
+		dcl(ts)
+	*/
+	| (_, `Tendln):
+	| _:
+		expr(ts)
+	;;
+	expectendln(ts)
+	match tokpeek(ts)
+	| (_, `Tendln):
+	| _:
+		expr(ts)
+	;;
+	expectendln(ts)
+	match tokpeek(ts)
+	| (_, `Tendln):
+	| _:
+		expr(ts)
+	;;
+	expectendln(ts)
+	block(ts)
+}
+
+const ifstmt = {ts
+	var l
+
+	(l, _) = toknext(ts)
+	expr(ts)
+	expectendln(ts)
+	block(ts)
+}
+
+const matchstmt = {ts
+	var l
+	
+	(l, _) = toknext(ts)
+	expr(ts)
+	expectendln(ts)
+	while true
+		match tokpeek(ts)
+		| (_, `Tbor):
+		| _:	break
+		;;
+	;;
+}
+
+const expr = {ts
+	toknext(ts)
 }
