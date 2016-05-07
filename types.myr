@@ -42,7 +42,7 @@ pkg parse =
 
 	type tydef = struct
 		ty	: ty
-		id	: int32
+		id	: int64
 		loc	: srcloc
 		fixed	: bool
 		found	: bool
@@ -52,15 +52,15 @@ pkg parse =
 	type ty = union
 		`Tyvoid
 		`Tybool
+		`Tychar
 		/* integers */
 		`Tyint8
 		`Tyint16
 		`Tyint32
+		`Tyint64
 		`Tyint
 		/* unsigned integers */
-		`Tychar
 		`Tybyte
-		`Tyint64
 		`Tyuint8
 		`Tyuint16
 		`Tyuint32
@@ -75,18 +75,18 @@ pkg parse =
 		`Tyslice tydef#
 		`Typtr tydef#
 		`Tyarray (tydef#, node#)
-		`Tystruct (dcl#[:])
-		`Tyunion (ucon#[:])
+		`Tystruct dcl#[:]
+		`Tyunion ucon#[:]
 		/* user defined types */
-		`Tygeneric (tydef#[:], tydef#)
-		`Tyname	(tydef#[:], tydef#)
+		`Tygeneric (byte[:], tydef#[:], tydef#)
+		`Tyname	(byte[:], tydef#[:], tydef#)
 		`Typaram byte[:]
 		`Tyvar int64
 	;;
 
 	type ucon = struct
 		loc	: srcloc
-		name	: name#
+		name	: name
 		uty	: tydef#
 		ety	: std.option(tydef#)
 	;;
@@ -176,8 +176,7 @@ pkg parse =
 		isglobl	: bool
 		isconst	: bool
 		isnoret	: bool
-		isinit	: bool
-		isexportinit	: bool
+
 		isextern	: bool
 		isimport	: bool
 		ishidden	: bool

@@ -1,11 +1,12 @@
 use std
 
-use "ast.use"
-use "stab.use"
-use "types.use"
-use "tokdefs.use"
-use "tok.use"
-use "util.use"
+use "ast"
+use "stab"
+use "tok"
+use "tokdefs"
+use "type"
+use "types"
+use "util"
 
 pkg parse =
 	const tsfile	: (ts : tokstream# -> file#)
@@ -14,7 +15,9 @@ pkg parse =
 const tsfile = {ts
 	var f
 	var t : tok
+	var vis : vis = `Visintern
 
+	/* initialize the parser and file state */
 	f = std.mk([
 		.uses = [][:],
 		.libs = [][:],
@@ -27,27 +30,22 @@ const tsfile = {ts
 		.ns = std.mkht(std.strhash, std.streq),
 	])
 	f.globls.super = `std.Some f.builtin
+
+	/* parse */
 	optendlns(ts)
 	while true
 		match tokpeek(ts)
-		| (l, `Teof):	
-			break
-		| (l, `Tuse):
-			usestmt(ts, f)
-		| (l, `Tpkg):
-			pkgdef(ts, f)
-		| (l, `Ttrait):
-			traitdef(ts, f)
-		| (l, `Ttype):
-			tydef(ts, f)
+		| (l, `Teof):	break
+		| (l, `Tuse):	usestmt(ts, f)
+		| (l, `Tpkg):	pkgdef(ts, f)
+		| (l, `Ttrait):	traitdef(ts, f)
+		| (l, `Ttype):	tydef(ts, f)
+		| (l, `Tendln):	endlns(ts)
 		| (l, tok):	
-			t = tok
-			std.put("..ok: {}\n", `Tplus)
-			err(l, "invalid top level item near {}", t)
-			if !dcl(ts, f)
+			if !vardcl(ts, f, true, vis)
+				err(l, "invalid top level item near {}", tok)
 			;;
 		;;
-		endlns(ts)
 	;;
 	-> f
 }
@@ -59,135 +57,195 @@ const usestmt = {ts, f
 	;;
 
 	match toknext(ts)
-	| (l, `Tstrlit str):	f.uses = std.slpush(f.uses, `Ulocal str)
-	| (l, `Tident id):	f.uses = std.slpush(f.uses, `Ulib id)
+	| (l, `Tstrlit str):	std.slpush(&f.uses, `Ulocal str)
+	| (l, `Tident id):	std.slpush(&f.uses, `Ulib id)
 	| (l, t):	err(l, "unexpected {} after use\n", t)
 	;;
 }
 
 const pkgdef = {ts, f
-	match toknext(ts)
-	| (l, `Tpkg):	/* ok */
-	| (l, t):	err(l, "unexpected token in pkg {}\n", t)
-	;;
-
-	match toknext(ts)
-	| (l, `Tident id):	setpkg(f, f.globls, id)
-	| (l, `Tgap):	/* pkg _ */
-	| (l, t):	err(l, "invalid package name {}\n", t)
-	;;
-
-	match toknext(ts)
-	| (l, `Tasn):	/* ok */
-	| (l, t):	err(l, "expected '=' after pkg name, got {}\n", t)
-	;;
-
-	pkgbody(ts, f)
-
-	expectendblk(ts, f)
-}
-
-const pkgbody = {ts, f
-	optendlns(ts)
+	std.fatal("unimplemented pkg\n")
 }
 
 const traitdef = {ts, f
+	std.fatal("unimplemented trait\n")
 }
 
 const tydef = {ts, f
+	std.fatal("unimplemented type\n")
 }
 
-const dcl = {ts, f : file#
-	var attrs, isconst, dcls
+const vardcl = {ts, f, isglobl, vis
+	var dcl : dcl
+	var hadattr
 
-	attrs = attrlist(ts)
+	/* attributes */
+	dcl = [
+		.id = f.dcls.len,
+		.vis = vis,
+		.init = `std.None,
+		.tr = `std.None,
+		.isglobl = isglobl,
+	]
 
-	match toknext(ts)
-	| (l, `Tconst):	isconst = true
-	| (l, `Tvar):	isconst = false
-	| (l, tok):
-		if attrs.len == 0
+	hadattr = dclattrs(ts, &dcl)
+	/* attributes (const | var) */
+	match tokpeek(ts)
+	| (l, `Tvar):	dcl.isconst = false
+	| (l, `Tconst):	dcl.isconst = true
+	| (l, `Tgeneric):	
+		dcl.isconst = true
+		dcl.isgeneric = true
+	| (l, badtok):
+		if hadattr
+			err(l, "unexpected {} in declaration, got {}\n", badtok)
+		else
 			-> false
 		;;
-		std.put("dcl loc: {}\n", l)
-		err(l, "expected const or var after type attribute, got {}\n", tok)
 	;;
-
-	dcls = dcllist(ts, f.globls)
+	if !dcltag(ts, &dcl)
+		if hadattr
+		else
+			-> false
+		;;
+	;;
+	dclname(ts, &dcl)
+	dcltype(ts, &dcl)
+	dclinit(ts, &dcl)
+	std.slpush(&f.dcls, std.mk(dcl))
 	-> true
 }
 
-const attrlist = {ts
-	var al
 
-	al = [][:]
-	while true
-		match tokpeek(ts)
-		| (l, `Tattr a):
-			toknext(ts)
-			al = std.slpush(al, a)
-		| _:
-			break
+const dclname = {ts, dcl : dcl#
+	/* attributes (const | var) name */
+	match name(ts)
+	| `std.Some n:
+		if n.ns.len > 0 && !dcl.isextern
+			std.fatal("only extern decls may provide namespaces\n")
 		;;
+		dcl.name = n
+	| `std.None:	
+		std.fatal("expected name in decl\n")
 	;;
-	-> al
 }
 
-const dcllist = {ts, st
-	var dl
-
-	dl = [][:]
-	while true
-		dl = std.slpush(dl, dclbody(ts))
-		match tokpeek(ts)
-		| (loc, Tcomma):	break
-		| _:
-		;;
-	;;
-	-> dl
-}
-
-const dclbody = {ts
-	var name
-
+const dcltype = {ts, dcl
 	match tokpeek(ts)
-	| (l, `Tident id):
-		name = id
+	| (l, `Tcolon):
 		toknext(ts)
-	| (l, tok):
-		err(l, "expected declaration name, got {}\n", tok)
+		match typename(ts)
+		| `std.Some t:	dcl.ty = t
+		| `std.None:	err(l, "expected type after ':'\n")
+		;;
+	| (l, _):
+		dcl.ty = mktyvar(l)
 	;;
+}
 
+const dclinit = {ts, dcl
 	match tokpeek(ts)
 	| (l, `Tasn):
 		toknext(ts)
-		/* init = expr(ts) */
-	| _:
-		-> void
+		match expr(ts)
+		| `std.Some e:	dcl.init = `std.Some e
+		| `std.None:	err(l, "expected initializer after '='\n")
+		;;
+		-> true
+	| tok:	
+		dcl.init = `std.None
 	;;
 
+	-> false
 }
 
-const endlns = {ts
+const expr = {ts
 	match tokpeek(ts)
-	| (l, `Tendln):	optendlns(ts)
-	| (l, tok):/*	err(l, "expected \\n, got {}\n", tok) */
-		std.put("{}\n", tok)
+	| (l, `Tintlit (val, sz, sign)):
+		toknext(ts)
+		-> `std.Some std.mk([
+			.ty = mktyvar(l),
+			.loc = l,
+			.e = `Olit (`Lint val)
+		])
+	| _:
+		std.fatal("unimplemented expression\n")
 	;;
+}
+
+const dclattrs = {ts, dcl
+	var hadattr
+
+	hadattr = false
+	while true
+		match tokpeek(ts)
+		| (_, `Tattr `Attrpkglocal):	dcl.ispkglocal = true
+		| (_, `Tattr `Attrextern):	dcl.isextern = true
+		| (_, `Tattr `Attrnoret):	dcl.isnoret = true
+		| _:	break
+		;;
+		toknext(ts)
+		hadattr = true
+	;;
+	-> hadattr
+}
+
+const dcltag = {ts, dcl
+	/* attributes (const | var) */
+	match tokpeek(ts)
+	| (_, `Tvar):	dcl.isconst = false
+	| (_, `Tconst):	dcl.isconst = true
+	| (_, `Tgeneric):	
+		dcl.isconst = true
+		dcl.isgeneric = true
+	| (l, badtok):
+		-> false
+	;;
+	toknext(ts)
+	-> true
+}
+
+const name = {ts -> std.option(name)
+	var ns, n
+
+	match tokpeek(ts)
+	| (l, `Tident id):	n = id
+	| (l, tok):	-> `std.None
+	;;
+	toknext(ts)
+
+	match tokpeek(ts)
+	| (l, `Tdot):	ns = n
+	| (l, _):	-> `std.Some [.ns = "", .name = n]
+	;;
+	toknext(ts)
+
+	match tokpeek(ts)
+	| (l, `Tident id):	n = id
+	| (l, tok):	err(l, "expected after '.', got {}\n", tok)
+	;;
+	toknext(ts)
+
+	-> `std.Some [.ns=ns, .name=n]
+}
+
+const typename = {ts
+	-> `std.None
 }
 
 const optendlns = {ts
 	while true
 		match tokpeek(ts)
-		| (l, `Tendln):	toknext(ts)
-		| _:	break
+		| (l, `Tendln): toknext(ts)
+		| _:    break
 		;;
 	;;
 }
 
-const expectendblk = {ts, f
-	match toknext(ts)
-	| (l, `Tendblk):	/* ok */
-	| (l, t):	err(l, "expected ;; after block, got {}\n", t)
+const endlns = {ts
+	match tokpeek(ts)
+	| (l, `Tendln): optendlns(ts)
+	| (l, tok):	err(l, "expected \\n, got {}\n", tok)
 	;;
+	-> true
 }

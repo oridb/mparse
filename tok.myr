@@ -276,7 +276,6 @@ const typaram = {ts
 const numlit = {ts
 	var t
 
-	std.put("parsing number: {}\n", ts.rest[:10])
 	if matchc(ts, '0')
 		if matchc(ts, 'x')
 			t = number(ts, 16)

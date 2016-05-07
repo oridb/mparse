@@ -1,0 +1,20 @@
+use std
+
+use "types"
+
+pkg parse =
+	const mktyvar	: (loc : srcloc -> tydef#)
+;;
+
+var ntypes	: int64 = 0
+
+const mktyvar = {loc
+	-> std.mk([
+		.ty = `Tyvar ntypes,
+		.id = ntypes,
+		.loc = loc,
+		.fixed = false,
+		.found = false,
+		.traits = std.mkbs()
+	])
+}

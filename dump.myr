@@ -11,11 +11,15 @@ const __init__ = {
 	var d : dcl
 	var st : stab
 	var e : expr
+	var name : name
+	var ty : tydef
 
 	std.fmtinstall(std.typeof(&f), fmtfile, [][:])
 	std.fmtinstall(std.typeof(&d), fmtdcl, [][:])
 	std.fmtinstall(std.typeof(&e), fmtexpr, [][:])
 	std.fmtinstall(std.typeof(&st), fmtstab, [][:])
+	std.fmtinstall(std.typeof(name), fmtname, [][:])
+	std.fmtinstall(std.typeof(&ty), fmttydef, [][:])
 }
 
 const fmtfile = {sb, ap, opts
@@ -42,6 +46,19 @@ const fmtexpr = {sb, ap, opts
 	exprdump(sb, f)
 }
 
+const fmtname = {sb, ap, opts
+	var n : name
+
+	n = std.vanext(ap)
+	namedump(sb, n)
+}
+
+const fmttydef = {sb, ap, opts
+	var ty : tydef#
+
+	ty = std.vanext(ap)
+	tydefdump(sb, ty)
+}
 
 const filedump = {sb, f, ind
 	ifmt(sb, ind, "file: {}\n", f.path)
@@ -72,11 +89,13 @@ const filedump = {sb, f, ind
 }
 
 const dcldump = {sb, dcl, ind
-	ifmt(sb, ind, "{}: {} {}: {}\t", dcl.id, dcl.vis, dcl.name, dcl.ty)
-	ifmt(sb, ind + 2, "globl:{}, const:{}, noret:{}, init:{}, exportinit:{}\n", \
-		dcl.isglobl, dcl.isconst, dcl.isnoret, dcl.isinit, dcl.isexportinit)
-	ifmt(sb, ind + 2, "extern:{}, import:{}, hidden:{}, pkglocal:{}, generic:{}\n", \
-		dcl.isextern, dcl.isimport, dcl.ishidden, dcl.ispkglocal, dcl.isgeneric)
+	ifmt(sb, ind, "Decl {}: {} {}: {}\n", dcl.name, dcl.id, dcl.vis, dcl.ty)
+	ifmt(sb, ind + 2, "globl:{}, const:{}, noret:{}\n", \
+		dcl.isglobl, dcl.isconst, dcl.isnoret)
+	ifmt(sb, ind + 2, "extern:{}, import:{}, hidden:{}\n", \
+		dcl.isextern, dcl.isimport, dcl.ishidden)
+	ifmt(sb, ind + 2, "pkglocal:{}, generic:{}\n", \
+		dcl.ispkglocal, dcl.isgeneric)
 	ifmt(sb, ind + 1, "{}", dcl.init)
 }
 
@@ -178,4 +197,80 @@ const stabdump = {sb, st, ind
 		;;
 	;;
 	std.slfree(keys)
+}
+
+const namedump = {sb, n
+	if n.ns.len > 0
+		std.sbfmt(sb, "{}.{}", n.ns, n.name)
+	else
+		std.sbfmt(sb, "{}", n.name)
+	;;
+}
+
+const tydefdump = {sb, ty
+	match ty.ty
+	| `Tyvoid:	std.sbfmt(sb, "void")
+	| `Tybool:	std.sbfmt(sb, "bool")
+	| `Tychar:	std.sbfmt(sb, "char")
+	/* integers */
+	| `Tyint8:	std.sbfmt(sb, "int8")
+	| `Tyint16:	std.sbfmt(sb, "int16")
+	| `Tyint32:	std.sbfmt(sb, "int32")
+	| `Tyint:	std.sbfmt(sb, "int")
+	| `Tyint64:	std.sbfmt(sb, "int64")
+	/* unsigned integers */
+	| `Tybyte:	std.sbfmt(sb, "byte")
+	| `Tyuint8:	std.sbfmt(sb, "uint8")
+	| `Tyuint16:	std.sbfmt(sb, "uint16")
+	| `Tyuint32:	std.sbfmt(sb, "uint32")
+	| `Tyuint:	std.sbfmt(sb, "uint")
+	| `Tyuint64:	std.sbfmt(sb, "uint64")
+	/*floats */
+	| `Tyflt32:	std.sbfmt(sb, "flt32")
+	| `Tyflt64:	std.sbfmt(sb, "flt64")
+	/* a bit odd.. */
+	| `Tyvalist:	std.sbfmt(sb, "...")
+	/* compound types */
+	| `Tyslice sub:	std.sbfmt(sb, "{}[:]", sub)
+	| `Typtr sub:	std.sbfmt(sb, "{}#", sub)
+	| `Tyarray (sub, len):	std.sbfmt(sb, "{}[{}]", sub, len)
+	| `Tystruct dcls:	structdump(sb, dcls)
+	| `Tyunion dcls:	uniondump(sb, dcls)
+	/* user defined types */
+	| `Tygeneric (n, args, sub):	nameddump(sb, n, args)
+	| `Tyname (n, args, sub):	nameddump(sb, n, args)
+	| `Typaram n:	std.sbfmt(sb, "@{}", n)
+	| `Tyvar id:	std.sbfmt(sb, "${}", id)
+	;;
+}
+
+const structdump = {sb, dcls
+	std.sbfmt(sb, "struct\n")
+	for d in dcls
+		std.sbfmt(sb, "{}\t: {}\n", d.name, d.ty)
+	;;
+	std.sbfmt(sb, ";;")
+}
+
+const uniondump = {sb, uconsj
+	std.sbfmt(sb, "union\n")
+	for uc in uconsj
+		std.sbfmt(sb, "`{} {}\n", uc.name, uc.ety)
+	;;
+	std.sbfmt(sb, ";;")
+}
+
+const nameddump = {sb, n, args
+	var sep
+
+	sep = ""
+	std.sbfmt(sb, "{}", n)
+	if args.len > 0
+		std.sbfmt(sb, "(")
+		for a in args
+			std.sbfmt(sb, "{}{}", sep, a)
+			sep = ", "
+		;;
+		std.sbfmt(sb, ")")
+	;;
 }

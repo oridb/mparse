@@ -7,5 +7,6 @@ bin dumpast {noinst} =
 	tok.myr
 	tokdefs.myr
 	types.myr
+	type.myr
 	util.myr
 ;;
