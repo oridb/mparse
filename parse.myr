@@ -126,7 +126,7 @@ const dclname = {ts, dcl : dcl#
 		;;
 		dcl.name = n
 	| `std.None:	
-		std.fatal("expected name in decl\n")
+		std.fatal("expected name in decl, got {}\n", tokpeekt(ts))
 	;;
 }
 
