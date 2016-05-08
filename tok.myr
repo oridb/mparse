@@ -6,6 +6,7 @@ use "util.use"
 
 pkg parse =
 	type tokstream = struct
+		last	: std.option((srcloc, tok))
 		next	: std.option((srcloc, tok))
 		rest	: byte[:]
 		data	: byte[:]
@@ -20,6 +21,7 @@ pkg parse =
 	const toknext	: (ts : tokstream#	-> (srcloc, tok))
 	const tokpeekt	: (ts : tokstream#	-> tok)
 	const tokpeek	: (ts : tokstream#	-> (srcloc, tok))
+	const tokunget	: (ts : tokstream#	-> void)
 ;;
 
 const Eof = std.Badchar
@@ -56,6 +58,7 @@ const toknext = {ts
 	var t
 	match ts.next
 	| `std.Some tok:
+		ts.last = ts.next
 		ts.next = `std.None
 		-> tok
 	| `std.None:
@@ -68,6 +71,10 @@ const toknextt = {ts
 	match toknext(ts)
 	| (l, t):	-> t
 	;;
+}
+
+const tokunget = {ts
+	ts.next = ts.last
 }
 
 const tokpeek = {ts
@@ -355,11 +362,27 @@ const number = {ts, base
 		| 'i':	bits = 32
 		| 's':	bits = 16
 		| 'b':	bits = 8
-		| _:	bits = 0
+		| _:	bits = minbits(v, issigned)
 		;;
 		v = std.get(std.intparsebase(buf[:nbuf], base))
 		/* guaranteed to be ok */
 		-> `Tintlit (v, bits, issigned)
+	;;
+}
+
+const minbits = {v, issigned
+	/* the range of signed values is effectively half unsigned */
+	if issigned
+		v *= 2
+	;;
+	if v <= 0xff
+		-> 8
+	elif v <= 0xffff
+		-> 16
+	elif v <= 0xffffffff
+		-> 32
+	else
+		-> 64
 	;;
 }
 

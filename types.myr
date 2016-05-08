@@ -93,7 +93,7 @@ pkg parse =
 
 	type impldef = struct
 		vis	: vis
-		tr	: name#
+		tr	: name
 		ty	: tydef#
 		aux	: tydef#[:]
 		dcls	: dcl#[:]
@@ -103,64 +103,66 @@ pkg parse =
 	type expr = struct
 		ty	: tydef#
 		loc	: srcloc
-		e	: union
-			`Oadd	(node#, node#)
-			`Osub	(node#, node#)
-			`Omul	(node#, node#)
-			`Odiv	(node#, node#)
-			`Omod	(node#, node#)
-			`Oneg	node#
-			`Obor	(node#, node#)
-			`Oband	(node#, node#)
-			`Obxor	(node#, node#)
-			`Obsl	(node#, node#)
-			`Obsr	(node#, node#)
-			`Obnot	node#
-			`Opreinc	node#
-			`Opostinc	node#
-			`Opredec	node#
-			`Opostdec	node#
-			`Oaddr	node#
-			`Oderef	node#
-			`Olor	(node#, node#)
-			`Oland	(node#, node#)
-			`Olnot	node#
-			`Oeq	(node#, node#)
-			`One	(node#, node#)
-			`Ogt	(node#, node#)
-			`Oge	(node#, node#)
-			`Olt	(node#, node#)
-			`Ole	(node#, node#)
-			`Oasn	(node#, node#)
-			`Oaddeq	(node#, node#)
-			`Osubeq	(node#, node#)
-			`Omuleq	(node#, node#)
-			`Odiveq	(node#, node#)
-			`Omodeq	(node#, node#)
-			`Oboreq	(node#, node#)
-			`Obandeq	(node#, node#)
-			`Obxoreq	(node#, node#)
-			`Obsleq	(node#, node#)
-			`Obsreq	(node#, node#)
-			`Oidx	(node#, node#)
-			`Oslice	(node#, node#, node#)
-			`Omemb	(node#, byte[:])
-			`Osize	ty#
-			`Ocall	(node#, node#[:])
-			`Ocast	node#
-			`Oret	node#
-			`Ojmp	name#
-			`Obreak
-			`Ocontinue
-			`Ovar	name#
-			`Ogap
-			`Olit	lit
-			`Oucon	(name#, std.option(node#))
-			`Otup	node#[:]
-			`Ostruct	(name#, node#)[:]
-			`Oarr	(node#, node#)[:]
-			`Oidxlen
-		;;
+		e	: exprop
+	;;
+
+	type exprop = union
+		`Oadd	(node#, node#)
+		`Osub	(node#, node#)
+		`Omul	(node#, node#)
+		`Odiv	(node#, node#)
+		`Omod	(node#, node#)
+		`Oneg	node#
+		`Obor	(node#, node#)
+		`Oband	(node#, node#)
+		`Obxor	(node#, node#)
+		`Obsl	(node#, node#)
+		`Obsr	(node#, node#)
+		`Obnot	node#
+		`Opreinc	node#
+		`Opostinc	node#
+		`Opredec	node#
+		`Opostdec	node#
+		`Oaddr	node#
+		`Oderef	node#
+		`Olor	(node#, node#)
+		`Oland	(node#, node#)
+		`Olnot	node#
+		`Oeq	(node#, node#)
+		`One	(node#, node#)
+		`Ogt	(node#, node#)
+		`Oge	(node#, node#)
+		`Olt	(node#, node#)
+		`Ole	(node#, node#)
+		`Oasn	(node#, node#)
+		`Oaddeq	(node#, node#)
+		`Osubeq	(node#, node#)
+		`Omuleq	(node#, node#)
+		`Odiveq	(node#, node#)
+		`Omodeq	(node#, node#)
+		`Oboreq	(node#, node#)
+		`Obandeq	(node#, node#)
+		`Obxoreq	(node#, node#)
+		`Obsleq	(node#, node#)
+		`Obsreq	(node#, node#)
+		`Oidx	(node#, node#)
+		`Oslice	(node#, node#, node#)
+		`Omemb	(node#, byte[:])
+		`Osize	tydef#
+		`Ocall	(node#, node#[:])
+		`Ocast	node#
+		`Oret	node#
+		`Ojmp	name
+		`Obreak
+		`Ocontinue
+		`Ovar	name
+		`Ogap
+		`Olit	lit
+		`Oucon	(name, std.option(node#))
+		`Otup	node#[:]
+		`Ostruct	(name, node#)[:]
+		`Oarr	(node#, node#)[:]
+		`Oidxlen
 	;;
 
 	type dcl = struct
@@ -220,7 +222,7 @@ pkg parse =
 	;;
 
 	type lit = union
-		`Lint	uint64
+		`Lint	(uint64, int, bool)
 		`Lflt	flt64
 		`Lchr	char
 		`Lstr	byte[:]

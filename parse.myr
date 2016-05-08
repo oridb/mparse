@@ -6,6 +6,7 @@ use "tok"
 use "tokdefs"
 use "type"
 use "types"
+use "node"
 use "util"
 
 pkg parse =
@@ -134,7 +135,7 @@ const dcltype = {ts, dcl
 	match tokpeek(ts)
 	| (l, `Tcolon):
 		toknext(ts)
-		match typename(ts)
+		match tyname(ts)
 		| `std.Some t:	dcl.ty = t
 		| `std.None:	err(l, "expected type after ':'\n")
 		;;
@@ -160,17 +161,49 @@ const dclinit = {ts, dcl
 }
 
 const expr = {ts
-	match tokpeek(ts)
-	| (l, `Tintlit (val, sz, sign)):
-		toknext(ts)
-		-> `std.Some std.mk([
-			.ty = mktyvar(l),
-			.loc = l,
-			.e = `Olit (`Lint val)
-		])
+	-> atomicexpr(ts)
+}
+
+const atomicexpr = {ts
+	var e
+
+	match toknext(ts)
+	| (l, `Tgap):		e = `std.Some mkexpr(l, `Ogap)
+	| (l, `Tident n):	e = `std.Some mkexpr(l, `Ovar [.ns="", .name=n])
+	| (l, `Tintlit i):	e = `std.Some mkexpr(l, `Olit `Lint i)
+	| (l, `Tstrlit s):	e = `std.Some mkexpr(l, `Olit `Lstr s)
+	| (l, `Tfltlit f):	e = `std.Some mkexpr(l, `Olit `Lflt f)
+	| (l, `Tchrlit c):	e = `std.Some mkexpr(l, `Olit `Lchr c)
+	| (l, `Tboollit b):	e = `std.Some mkexpr(l, `Olit `Lbool b)
+	| (l, `Tvoidlit):	e = `std.Some mkexpr(l, `Olit `Lvoid)
+	| (l, `Tsizeof):	e = sizeofexpr(ts, l)
 	| _:
-		std.fatal("unimplemented expression\n")
+		tokunget(ts)
+		e = `std.None
 	;;
+
+	-> e
+}
+
+const sizeofexpr = {ts, loc
+	var e
+
+	match tokpeek(ts)
+	| (_, `Toparen):	/* ok */
+	| (l, badtok):	err(l, "expected '(' after sizeof, got {}\n", badtok)
+	;;
+
+	match tyname(ts)
+	| `std.Some ty:	e = mkexpr(loc, `Osize ty)
+	| `std.None:	err(ts.loc, "expected type in sizeof, got {}\n", tokpeekt(ts))
+	;;
+
+	match tokpeek(ts)
+	| (_, `Toparen):	/* ok */
+	| (l, badtok):	err(l, "expected '(' after sizeof, got {}\n", badtok)
+	;;
+
+	-> `std.Some e
 }
 
 const dclattrs = {ts, dcl
@@ -229,7 +262,7 @@ const name = {ts -> std.option(name)
 	-> `std.Some [.ns=ns, .name=n]
 }
 
-const typename = {ts
+const tyname = {ts
 	-> `std.None
 }
 
