@@ -63,6 +63,7 @@ const toknext = {ts
 		-> tok
 	| `std.None:
 		t = tokread(ts)
+		ts.last = `std.Some t
 		-> t
 	;;
 }

@@ -13,6 +13,7 @@ const __init__ = {
 	var e : expr
 	var name : name
 	var ty : tydef
+	var lit : lit
 
 	std.fmtinstall(std.typeof(&f), fmtfile, [][:])
 	std.fmtinstall(std.typeof(&d), fmtdcl, [][:])
@@ -20,6 +21,7 @@ const __init__ = {
 	std.fmtinstall(std.typeof(&st), fmtstab, [][:])
 	std.fmtinstall(std.typeof(name), fmtname, [][:])
 	std.fmtinstall(std.typeof(&ty), fmttydef, [][:])
+	std.fmtinstall(std.typeof(lit), fmtlit, [][:])
 }
 
 const fmtfile = {sb, ap, opts
@@ -58,6 +60,13 @@ const fmttydef = {sb, ap, opts
 
 	ty = std.vanext(ap)
 	tydefdump(sb, ty)
+}
+
+const fmtlit = {sb, ap, opts
+	var lit : lit
+
+	lit = std.vanext(ap)
+	litdump(sb, lit)
 }
 
 const filedump = {sb, f, ind
@@ -274,3 +283,16 @@ const nameddump = {sb, n, args
 		std.sbfmt(sb, ")")
 	;;
 }
+
+const litdump = {sb, lit
+	match lit
+	| `Lint	(v, _, _):	std.sbfmt(sb, "{}", v)
+	| `Lflt	v:	std.sbfmt(sb, "{}", v)
+	| `Lchr	v:	std.sbfmt(sb, "{}", v)
+	| `Lstr	v:	std.sbfmt(sb, "{}", v)
+	| `Llbl	v:	std.sbfmt(sb, "{}", v)
+	| `Lbool v:	std.sbfmt(sb, ":{}", v)
+	| `Lvoid:	std.sbfmt(sb, "void")
+	;;
+}
+

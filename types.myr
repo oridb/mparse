@@ -107,61 +107,61 @@ pkg parse =
 	;;
 
 	type exprop = union
-		`Oadd	(node#, node#)
-		`Osub	(node#, node#)
-		`Omul	(node#, node#)
-		`Odiv	(node#, node#)
-		`Omod	(node#, node#)
-		`Oneg	node#
-		`Obor	(node#, node#)
-		`Oband	(node#, node#)
-		`Obxor	(node#, node#)
-		`Obsl	(node#, node#)
-		`Obsr	(node#, node#)
-		`Obnot	node#
-		`Opreinc	node#
-		`Opostinc	node#
-		`Opredec	node#
-		`Opostdec	node#
-		`Oaddr	node#
-		`Oderef	node#
-		`Olor	(node#, node#)
-		`Oland	(node#, node#)
-		`Olnot	node#
-		`Oeq	(node#, node#)
-		`One	(node#, node#)
-		`Ogt	(node#, node#)
-		`Oge	(node#, node#)
-		`Olt	(node#, node#)
-		`Ole	(node#, node#)
-		`Oasn	(node#, node#)
-		`Oaddeq	(node#, node#)
-		`Osubeq	(node#, node#)
-		`Omuleq	(node#, node#)
-		`Odiveq	(node#, node#)
-		`Omodeq	(node#, node#)
-		`Oboreq	(node#, node#)
-		`Obandeq	(node#, node#)
-		`Obxoreq	(node#, node#)
-		`Obsleq	(node#, node#)
-		`Obsreq	(node#, node#)
-		`Oidx	(node#, node#)
-		`Oslice	(node#, node#, node#)
-		`Omemb	(node#, byte[:])
+		`Oadd	(expr#, expr#)
+		`Osub	(expr#, expr#)
+		`Omul	(expr#, expr#)
+		`Odiv	(expr#, expr#)
+		`Omod	(expr#, expr#)
+		`Oneg	expr#
+		`Obor	(expr#, expr#)
+		`Oband	(expr#, expr#)
+		`Obxor	(expr#, expr#)
+		`Obsl	(expr#, expr#)
+		`Obsr	(expr#, expr#)
+		`Obnot	expr#
+		`Opreinc	expr#
+		`Opostinc	expr#
+		`Opredec	expr#
+		`Opostdec	expr#
+		`Oaddr	expr#
+		`Oderef	expr#
+		`Olor	(expr#, expr#)
+		`Oland	(expr#, expr#)
+		`Olnot	expr#
+		`Oeq	(expr#, expr#)
+		`One	(expr#, expr#)
+		`Ogt	(expr#, expr#)
+		`Oge	(expr#, expr#)
+		`Olt	(expr#, expr#)
+		`Ole	(expr#, expr#)
+		`Oasn	(expr#, expr#)
+		`Oaddeq	(expr#, expr#)
+		`Osubeq	(expr#, expr#)
+		`Omuleq	(expr#, expr#)
+		`Odiveq	(expr#, expr#)
+		`Omodeq	(expr#, expr#)
+		`Oboreq	(expr#, expr#)
+		`Obandeq	(expr#, expr#)
+		`Obxoreq	(expr#, expr#)
+		`Obsleq	(expr#, expr#)
+		`Obsreq	(expr#, expr#)
+		`Oidx	(expr#, expr#)
+		`Oslice	(expr#, std.option(expr#), std.option(expr#))
+		`Omemb	(expr#, byte[:])
 		`Osize	tydef#
-		`Ocall	(node#, node#[:])
-		`Ocast	node#
-		`Oret	node#
+		`Ocall	(expr#, expr#[:])
+		`Ocast	expr#
+		`Oret	expr#
 		`Ojmp	name
 		`Obreak
 		`Ocontinue
 		`Ovar	name
 		`Ogap
 		`Olit	lit
-		`Oucon	(name, std.option(node#))
-		`Otup	node#[:]
-		`Ostruct	(name, node#)[:]
-		`Oarr	(node#, node#)[:]
+		`Oucon	(name, std.option(expr#))
+		`Otup	expr#[:]
+		`Ostruct	(name, expr#)[:]
+		`Oarr	(expr#, expr#)[:]
 		`Oidxlen
 	;;
 

@@ -161,7 +161,121 @@ const dclinit = {ts, dcl
 }
 
 const expr = {ts
-	-> atomicexpr(ts)
+	-> postfixexpr(ts)
+}
+
+const postfixexpr = {ts
+	var e
+
+	match atomicexpr(ts)
+	| `std.Some r:	e = r
+	| `std.None:	-> `std.None
+	;;
+
+	while true
+		match toknext(ts)
+		| (l, `Tdot):	
+			match toknext(ts)
+			| (ml, `Tident memb):	e = mkexpr(l, `Omemb (e, memb))
+			| (ml, badtok):	err(ml, "expected member after '.', got {}\n", badtok)
+			;;
+		| (l, `Tinc):	e = mkexpr(l, `Opostinc e)
+		| (l, `Tdec):	e = mkexpr(l, `Opostdec e)
+		| (l, `Tderef):	e = mkexpr(l, `Oderef e)
+		| (l, `Tosqbrac):	e = idxexpr(ts, e)
+		| (l, `Toparen):	e = callexpr(ts, e)
+		| tok:	
+			std.put("unget: {}\n", tok)
+			tokunget(ts)
+			break
+		;;
+	;;
+	-> `std.Some e
+}
+
+const idxexpr = {ts : tokstream#, base
+	var hadsl
+	var lo, hi
+	var loc
+
+	loc = ts.loc
+
+	/* open [ is consumed by caller */
+
+	match expr(ts)
+	| `std.Some e:	lo = `std.Some e
+	| `std.None:	lo = `std.None
+	;;
+
+	hadsl = false
+	match tokpeek(ts)
+	| (l, `Tcolon):
+		toknext(ts)
+		hadsl = true
+		match expr(ts)
+		| `std.Some e:	hi = `std.Some e
+		| `std.None:	hi = `std.None
+		;;
+	| (l, tok):
+		match lo
+		| `std.Some _:	/* ok */
+		| `std.None:	err(l, "expected index in expr, got {}\n", tok)
+		;;
+
+	;;
+
+	match toknext(ts)
+	| (_, `Tcsqbrac):	/* ok */
+	| (l, badtok):	err(l, "expected ']' after indexer, got {}\n", badtok)
+	;;
+
+	if hadsl
+		-> mkexpr(loc, `Oslice (base, lo, hi))
+	else
+		match lo
+		| `std.Some e:	-> mkexpr(loc, `Oidx (base, e))
+		| `std.None:	std.die("should be unreachable\n")
+		;;
+	;;
+
+}
+
+const callexpr = {ts, e
+	var args
+	/* open ) is consumed by caller */
+
+	args = callargs(ts)
+
+	match toknext(ts)
+	| (_, `Tcparen):	/* ok */
+	| (l, badtok):	err(l, "expected ')' after call, got {}\n", badtok)
+	;;
+	
+	-> mkexpr(ts.loc, `Ocall (e, args))
+
+}
+
+const callargs = {ts
+	var args
+
+	args = [][:]
+	match expr(ts)
+	| `std.None:	-> args
+	| `std.Some e:	std.slpush(&args, e)
+	;;
+
+	while true
+		match toknext(ts)
+		| (l, `Tcomma):
+			match expr(ts)
+			| `std.Some e:	std.slpush(&args, e)
+			| `std.None:	err(l, "expected expression after ',' in function args\n")
+			;;
+		| _:
+			break
+		;;
+	;;
+	-> args
 }
 
 const atomicexpr = {ts
@@ -188,7 +302,7 @@ const atomicexpr = {ts
 const sizeofexpr = {ts, loc
 	var e
 
-	match tokpeek(ts)
+	match toknext(ts)
 	| (_, `Toparen):	/* ok */
 	| (l, badtok):	err(l, "expected '(' after sizeof, got {}\n", badtok)
 	;;
@@ -198,7 +312,7 @@ const sizeofexpr = {ts, loc
 	| `std.None:	err(ts.loc, "expected type in sizeof, got {}\n", tokpeekt(ts))
 	;;
 
-	match tokpeek(ts)
+	match toknext(ts)
 	| (_, `Toparen):	/* ok */
 	| (l, badtok):	err(l, "expected '(' after sizeof, got {}\n", badtok)
 	;;
