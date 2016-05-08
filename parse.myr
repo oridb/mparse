@@ -161,7 +161,50 @@ const dclinit = {ts, dcl
 }
 
 const expr = {ts
-	-> postfixexpr(ts)
+	-> prefixexpr(ts)
+}
+
+const prefixexpr = {ts
+	match toknext(ts)
+	| (l, `Tinc):	
+		match prefixexpr(ts)
+		| `std.Some e:	-> `std.Some mkexpr(l, `Opreinc e)
+		| `std.None:	-> `std.None
+		;;
+	| (l, `Tdec):
+		match prefixexpr(ts)
+		| `std.Some e:	-> `std.Some mkexpr(l, `Opredec e)
+		|`std.None:	-> `std.None
+		;;
+	| (l, `Tband):
+		match prefixexpr(ts)
+		| `std.Some e:	-> `std.Some mkexpr(l, `Oaddr e)
+		|`std.None:	-> `std.None
+		;;
+	| (l, `Tlnot):
+		match prefixexpr(ts)
+		| `std.Some e:	-> `std.Some mkexpr(l, `Olnot e)
+		|`std.None:	-> `std.None
+		;;
+	| (l, `Tbnot):
+		match prefixexpr(ts)
+		| `std.Some e:	-> `std.Some mkexpr(l, `Obnot e)
+		|`std.None:	-> `std.None
+		;;
+	| (l, `Tminus):
+		match prefixexpr(ts)
+		| `std.Some e:	-> `std.Some mkexpr(l, `Oneg e)
+		|`std.None:	-> `std.None
+		;;
+	| (l, `Tplus):
+		match prefixexpr(ts)
+		| `std.Some e:	-> `std.Some e
+		|`std.None:	-> `std.None
+		;;
+	| _:	
+		tokunget(ts)
+		-> postfixexpr(ts)
+	;;
 }
 
 const postfixexpr = {ts
@@ -272,6 +315,7 @@ const callargs = {ts
 			| `std.None:	err(l, "expected expression after ',' in function args\n")
 			;;
 		| _:
+			tokunget(ts)
 			break
 		;;
 	;;
