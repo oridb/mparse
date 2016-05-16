@@ -161,12 +161,95 @@ const dclinit = {ts, dcl
 }
 
 const expr = {ts
-	-> prefixexpr(ts)
+	-> binexpr(ts)
+}
+
+const binexpr = {ts
+	match prefixexpr(ts)
+	| `std.Some e:	-> `std.Some binexprcore(ts, e, 0)
+	| `std.None:	-> `std.None
+	;;
+}
+
+const binexprcore = {ts, lhs, minprec
+	var prec, peekprec
+	var op, oploc
+	var peek, peekloc
+	var rhs
+
+	(peekloc, peek) = tokpeek(ts)
+	while true
+		prec = precedence(peek) 
+		if prec < minprec
+			break
+		;;
+
+		op = peek
+		oploc = peekloc
+		toknext(ts)
+
+		match prefixexpr(ts)
+		| `std.Some e:	rhs = e
+		| `std.None:	err(ts.loc, "expected primary expression after {}, near {}", op, tokpeekt(ts))
+		;;
+
+		(peekloc, peek) = tokpeek(ts)
+		while true
+			peekprec = precedence(peek)
+			if peekprec <= prec
+				break
+			;;
+			rhs = binexprcore(ts, rhs, peekprec)
+			(peekloc, peek) = tokpeek(ts)
+		;;
+		match op
+		/* binary or */
+		| `Tbor:	lhs = mkexpr(oploc, `Obor (lhs, rhs))
+		| `Tbxor:	lhs = mkexpr(oploc, `Obxor (lhs, rhs))
+		/* binary and */
+		| `Tband:	lhs = mkexpr(oploc, `Oband (lhs, rhs))
+		/* additive */
+		| `Tplus:	lhs = mkexpr(oploc, `Oadd (lhs, rhs))
+		| `Tminus:	lhs = mkexpr(oploc, `Osub (lhs, rhs))
+		/* multiplicative */
+		| `Tmul:	lhs = mkexpr(oploc, `Omul (lhs, rhs))
+		| `Tdiv:	lhs = mkexpr(oploc, `Odiv (lhs, rhs))
+		| `Tmod:	lhs = mkexpr(oploc, `Omod (lhs, rhs))
+		/* shift */
+		| `Tbsl:	lhs = mkexpr(oploc, `Obsl (lhs, rhs))
+		| `Tbsr:	lhs = mkexpr(oploc, `Obsr (lhs, rhs))
+		/* all others */
+		| _:	std.die("broken parser")
+		;;
+	;;
+	-> lhs
+}
+
+const precedence = {tok
+	match tok
+	/* binary or */
+	| `Tbor:	-> 0
+	| `Tbxor:	-> 0
+	/* binary and */
+	| `Tband:	-> 1
+	/* additive */
+	| `Tplus:	-> 2
+	| `Tminus:	-> 2
+	/* multiplicative */
+	| `Tmul:	-> 3
+	| `Tdiv:	-> 3
+	| `Tmod:	-> 3
+	/* shift */
+	| `Tbsl:	-> 4
+	| `Tbsr:	-> 3
+	/* all others */
+	| _:	-> -1
+	;;
 }
 
 const prefixexpr = {ts
 	match toknext(ts)
-	| (l, `Tinc):	
+	| (l, `Tinc):
 		match prefixexpr(ts)
 		| `std.Some e:	-> `std.Some mkexpr(l, `Opreinc e)
 		| `std.None:	-> `std.None
@@ -228,7 +311,6 @@ const postfixexpr = {ts
 		| (l, `Tosqbrac):	e = idxexpr(ts, e)
 		| (l, `Toparen):	e = callexpr(ts, e)
 		| tok:	
-			std.put("unget: {}\n", tok)
 			tokunget(ts)
 			break
 		;;
