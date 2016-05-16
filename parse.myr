@@ -161,7 +161,147 @@ const dclinit = {ts, dcl
 }
 
 const expr = {ts
-	-> binexpr(ts)
+	match unionexpr(ts)
+	| `std.Some e:	-> `std.Some exprcore(ts, e, 0)
+	| `std.None:	-> `std.None
+	;;
+}
+
+const exprcore = {ts, lhs, minprec
+	var peek, peekloc, assoc
+	var prec, peekprec
+	var op, oploc
+	var rhs
+
+	(peekloc, peek) = tokpeek(ts)
+	while true
+		(prec, assoc) = exprprec(peek) 
+		if prec < minprec
+			break
+		;;
+
+		op = peek
+		oploc = peekloc
+		toknext(ts)
+
+		match unionexpr(ts)
+		| `std.Some e:	rhs = e
+		| `std.None:	err(ts.loc, "expected primary expression after {}, near {}", op, tokpeekt(ts))
+		;;
+
+		(peekloc, peek) = tokpeek(ts)
+		while true
+			(peekprec, assoc) = exprprec(peek)
+			if (!assoc && peekprec <= prec) || (assoc && peekprec < prec)
+				break
+			;;
+			rhs = binexprcore(ts, rhs, peekprec)
+			(peekloc, peek) = tokpeek(ts)
+		;;
+		match op
+		/* assignmets */
+		| `Tasn:	lhs = mkexpr(oploc, `Oasn (lhs, rhs))
+		| `Taddeq:	lhs = mkexpr(oploc, `Oaddeq (lhs, rhs))
+		| `Tsubeq:	lhs = mkexpr(oploc, `Osubeq (lhs, rhs))
+		| `Tmuleq:	lhs = mkexpr(oploc, `Omuleq (lhs, rhs))
+		| `Tdiveq:	lhs = mkexpr(oploc, `Odiveq (lhs, rhs))
+		| `Tmodeq:	lhs = mkexpr(oploc, `Omodeq (lhs, rhs))
+		| `Tboreq:	lhs = mkexpr(oploc, `Oboreq (lhs, rhs))
+		| `Tbandeq:	lhs = mkexpr(oploc, `Obandeq (lhs, rhs))
+		| `Tbsleq:	lhs = mkexpr(oploc, `Obsleq (lhs, rhs))
+		| `Tbsreq:	lhs = mkexpr(oploc, `Obsreq (lhs, rhs))
+		/* logical ops */
+		| `Tlor:	lhs = mkexpr(oploc, `Olor (lhs, rhs))
+		| `Tland:	lhs = mkexpr(oploc, `Oland (lhs, rhs))
+		/* multiplicative */
+		| `Teq:	lhs = mkexpr(oploc, `Oeq (lhs, rhs))
+		| `Tgt:	lhs = mkexpr(oploc, `Ogt (lhs, rhs))
+		| `Tge:	lhs = mkexpr(oploc, `Oge (lhs, rhs))
+		| `Tlt:	lhs = mkexpr(oploc, `Olt (lhs, rhs))
+		| `Tle:	lhs = mkexpr(oploc, `Ole (lhs, rhs))
+		| `Tne:	lhs = mkexpr(oploc, `One (lhs, rhs))
+		| _:	std.die("broken parser")
+		;;
+	;;
+	-> lhs
+}
+
+const exprprec = {tok
+	match tok
+	/* assignmets */
+	| `Tasn:	-> (0, true)
+	| `Taddeq:	-> (0, true)
+	| `Tsubeq:	-> (0, true)
+	| `Tmuleq:	-> (0, true)
+	| `Tdiveq:	-> (0, true)
+	| `Tmodeq:	-> (0, true)
+	| `Tboreq:	-> (0, true)
+	| `Tbandeq:	-> (0, true)
+	| `Tbsleq:	-> (0, true)
+	| `Tbsreq:	-> (0, true)
+	/* logical ops */
+	| `Tlor:	-> (1, false)
+	| `Tland:	-> (2, false)
+	/* multiplicative */
+	| `Teq:	-> (3, false)
+	| `Tgt:	-> (3, false)
+	| `Tge:	-> (3, false)
+	| `Tlt:	-> (3, false)
+	| `Tle:	-> (3, false)
+	| `Tne:	-> (3, false)
+	/* all others */
+	| _:	-> (-1, false)
+	;;
+}
+
+const unionexpr = {ts
+	var tag, expr
+
+	match tokpeek(ts)
+	| (l, `Ttick):
+		toknext(ts)
+		match name(ts)
+		| `std.Some n:	tag = n
+		| `std.None:	err(l, "expected union tag after '`'\n")
+		;;
+
+		expr = castexpr(ts)
+		-> `std.Some mkexpr(l, `Oucon (tag, expr))
+	| _:
+		-> castexpr(ts)
+	;;
+}
+
+const castexpr = {ts
+	var ty
+
+	match binexpr(ts)
+	| `std.Some e:
+		match tokpeek(ts)
+		| (l, `Tcast):
+			toknextt(ts)
+			match toknext(ts)
+			| (pl, `Toparen):
+			| (pl, badtok):	err(l, "expected '(' after 'castto', got {}\n", badtok)
+			;;
+
+			match tyname(ts)
+			| `std.Some t:	ty = t
+			| `std.None:	err(ts.loc, "expected type in castto near {}\n", tokpeekt(ts))
+			;;
+
+			match toknext(ts)
+			| (pl, `Tcparen):
+			| (pl, badtok):	err(l, "expected '(' after 'castto', got {}\n", badtok)
+			;;
+
+			-> `std.Some mkexpr(l, `Ocast (e, ty))
+		| _:	
+			-> `std.Some e
+		;;
+	| `std.None:
+		-> `std.None
+	;;
 }
 
 const binexpr = {ts
@@ -179,7 +319,7 @@ const binexprcore = {ts, lhs, minprec
 
 	(peekloc, peek) = tokpeek(ts)
 	while true
-		prec = precedence(peek) 
+		prec = binprec(peek) 
 		if prec < minprec
 			break
 		;;
@@ -195,7 +335,7 @@ const binexprcore = {ts, lhs, minprec
 
 		(peekloc, peek) = tokpeek(ts)
 		while true
-			peekprec = precedence(peek)
+			peekprec = binprec(peek)
 			if peekprec <= prec
 				break
 			;;
@@ -225,7 +365,7 @@ const binexprcore = {ts, lhs, minprec
 	-> lhs
 }
 
-const precedence = {tok
+const binprec = {tok
 	match tok
 	/* binary or */
 	| `Tbor:	-> 0

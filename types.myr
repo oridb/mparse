@@ -150,7 +150,7 @@ pkg parse =
 		`Omemb	(expr#, byte[:])
 		`Osize	tydef#
 		`Ocall	(expr#, expr#[:])
-		`Ocast	expr#
+		`Ocast	(expr#, tydef#)
 		`Oret	expr#
 		`Ojmp	name
 		`Obreak

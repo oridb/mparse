@@ -162,7 +162,7 @@ const exprdump = {sb, e
 	| [.e = `Olit lit]:	std.sbfmt(sb, "{}", lit)
 	| [.e = `Ocall (f, args)]:	std.sbfmt(sb, "{}({})", f, args)
 	| [.e = `Oucon (t, `std.Some v)]:
-		std.sbfmt(sb, "{} {}", t, v)
+		std.sbfmt(sb, "`{} {}", t, v)
 	| [.e = `Oucon (t, `std.None)]:
 		std.sbfmt(sb, "{}", t)
 	| [.e = `Otup al]:
