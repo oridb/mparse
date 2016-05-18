@@ -564,12 +564,12 @@ const identstr = {ts
 	var i, str
 
 	/* ASCII */
-	if ts.rest.len == 0 || std.isdigit(ts.rest[0] castto(char))
+	if ts.rest.len == 0 || std.isdigit(std.decode(ts.rest))
 		-> ""
 	;;
 
 	for i = 0; i < ts.rest.len; i++
-		if !isident(ts.rest[i] castto(char))
+		if !isident(std.decode(ts.rest[i:]))
 			break
 		;;
 	;;
