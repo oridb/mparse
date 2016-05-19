@@ -1,0 +1,18 @@
+use std
+
+use "types"
+use "type"
+
+pkg parse =
+	const mkexpr	: (l : srcloc, e : exprop -> expr#)
+;;
+
+const mkexpr = {l, e
+	-> std.mk([
+		.loc = l,
+		.ty = mktyvar(l),
+		.e = e,
+	])
+}
+
+
