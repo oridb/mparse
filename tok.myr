@@ -609,16 +609,14 @@ const takec = {ts
 }
 
 const skipto = {ts, chr
-	var c, s
+	var c
 
-	s = ts.rest
 	while true
-		(c, s) = std.strstep(s)
-		if s.len == 0 || c == chr
+		c = takec(ts)
+		if ts.rest.len == 0 || c == chr
 			break
 		;;
 	;;
-	ts.rest = s
 }
 
 const matchc = {ts, chr
