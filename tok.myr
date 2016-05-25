@@ -618,6 +618,7 @@ const skipto = {ts, chr
 			break
 		;;
 	;;
+	ts.rest = s
 }
 
 const matchc = {ts, chr
