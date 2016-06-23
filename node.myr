@@ -4,7 +4,12 @@ use "types"
 use "type"
 
 pkg parse =
+	/* expr nodes */
 	const mkexpr	: (l : srcloc, e : exprop -> expr#)
+
+	/* type nodes */
+	const mktyvar	: (l : srcloc -> tydef#)
+	const mkty	: (l : srcloc, ty : ty -> tydef#)
 ;;
 
 const mkexpr = {l, e
@@ -15,4 +20,21 @@ const mkexpr = {l, e
 	])
 }
 
+
+var ntypes	: int64 = 0
+
+const mktyvar = {l
+	-> mkty(l, `Tyvar ntypes)
+}
+
+const mkty = {l, ty
+	-> std.mk([
+		.ty = ty,
+		.id = ntypes++,
+		.loc = l,
+		.fixed = false,
+		.found = false,
+		.traits = std.mkbs()
+	])
+}
 

@@ -81,7 +81,7 @@ pkg parse =
 	
 		`Tconst   /* const */
 		`Tvar     /* var */
-		`Tgeneric /* var */
+		`Tgeneric /* generic */
 		`Tcast    /* castto */
 	
 		`Tgap     /* _ */

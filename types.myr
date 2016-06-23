@@ -79,7 +79,8 @@ pkg parse =
 		`Tyunion ucon#[:]
 		/* user defined types */
 		`Tygeneric (byte[:], tydef#[:], tydef#)
-		`Tyname	(byte[:], tydef#[:], tydef#)
+		`Tyname	(name, tydef#[:], tydef#)
+		`Tyunres	(name, tydef#[:])
 		`Typaram byte[:]
 		`Tyvar int64
 	;;

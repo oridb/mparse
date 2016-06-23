@@ -135,7 +135,7 @@ const dcltype = {ts, dcl
 	match tokpeek(ts)
 	| (l, `Tcolon):
 		toknext(ts)
-		match tyname(ts)
+		match typ(ts)
 		| `std.Some t:	dcl.ty = t
 		| `std.None:	err(l, "expected type after ':'\n")
 		;;
@@ -285,7 +285,7 @@ const castexpr = {ts
 			| (pl, badtok):	err(l, "expected '(' after 'castto', got {}\n", badtok)
 			;;
 
-			match tyname(ts)
+			match typ(ts)
 			| `std.Some t:	ty = t
 			| `std.None:	err(ts.loc, "expected type in castto near {}\n", tokpeekt(ts))
 			;;
@@ -557,6 +557,7 @@ const atomicexpr = {ts
 	| (l, `Tboollit b):	e = `std.Some mkexpr(l, `Olit `Lbool b)
 	| (l, `Tvoidlit):	e = `std.Some mkexpr(l, `Olit `Lvoid)
 	| (l, `Tsizeof):	e = sizeofexpr(ts, l)
+	| (l, `Tobrace):	e = funcexpr(ts, l)
 	| _:
 		tokunget(ts)
 		e = `std.None
@@ -573,7 +574,7 @@ const sizeofexpr = {ts, loc
 	| (l, badtok):	err(l, "expected '(' after sizeof, got {}\n", badtok)
 	;;
 
-	match tyname(ts)
+	match typ(ts)
 	| `std.Some ty:	e = mkexpr(loc, `Osize ty)
 	| `std.None:	err(ts.loc, "expected type in sizeof, got {}\n", tokpeekt(ts))
 	;;
@@ -584,6 +585,10 @@ const sizeofexpr = {ts, loc
 	;;
 
 	-> `std.Some e
+}
+
+const funcexpr = {ts, loc
+	-> `std.None
 }
 
 const dclattrs = {ts, dcl
@@ -642,8 +647,56 @@ const name = {ts -> std.option(name)
 	-> `std.Some [.ns=ns, .name=n]
 }
 
-const tyname = {ts
-	-> `std.None
+const typ = {ts
+	var ty
+
+	match toknext(ts)
+	| (l, `Tstruct):	ty = tystruct(ts)
+	| (l, `Tunion):		ty = tyunion(ts)
+	| (l, `Tellipsis):	ty = mkty(l, `Tyvalist)
+	| (l, `Ttyparam n):	ty = mkty(l, `Typaram n)
+	| (l, `Tident id):
+		tokunget(ts)
+		ty = tyname(ts)
+	| (l, badtok):	
+		tokunget(ts)
+		-> `std.None
+	;;
+
+	-> `std.Some tysuffixed(ts, ty)
+}
+
+const tystruct = {ts
+	/* already have struct token */
+	err(ts.loc, "struct not yet supported\n")
+	-> std.alloc()
+}
+
+const tyunion = {ts
+	/* already have union token */
+	err(ts.loc, "struct not yet supported\n")
+	-> std.alloc()
+}
+
+const tyname : (ts : tokstream# -> tydef#) = {ts
+	var nam, params
+
+	match name(ts)
+	| `std.Some n:	nam = n
+	| `std.None:	std.die("we came hear after peeking an ident\n")
+	;;
+
+	params = [][:]
+	match tokpeek(ts)
+	| (l, `Toparen):	err(l, "param lists aren't yet supported\n")
+	| (l, _):
+	;;
+
+	-> mkty(ts.loc, `Tyunres (nam, params))
+}
+
+const tysuffixed = {ts, base
+	-> base
 }
 
 const optendlns = {ts

@@ -246,8 +246,9 @@ const tydefdump = {sb, ty
 	| `Tystruct dcls:	structdump(sb, dcls)
 	| `Tyunion dcls:	uniondump(sb, dcls)
 	/* user defined types */
-	| `Tygeneric (n, args, sub):	nameddump(sb, n, args)
+	| `Tygeneric (n, args, sub):	nameddump(sb, [.ns="", .name=n], args)
 	| `Tyname (n, args, sub):	nameddump(sb, n, args)
+	| `Tyunres (n, args):	nameddump(sb, n, args)
 	| `Typaram n:	std.sbfmt(sb, "@{}", n)
 	| `Tyvar id:	std.sbfmt(sb, "${}", id)
 	;;
@@ -269,11 +270,14 @@ const uniondump = {sb, uconsj
 	std.sbfmt(sb, ";;")
 }
 
-const nameddump = {sb, n, args
+const nameddump = {sb, n : name, args
 	var sep
 
 	sep = ""
-	std.sbfmt(sb, "{}", n)
+	if n.ns.len > 0
+		std.sbfmt(sb, "{}.", n.ns)
+	;;
+	std.sbfmt(sb, "{}", n.name)
 	if args.len > 0
 		std.sbfmt(sb, "(")
 		for a in args
