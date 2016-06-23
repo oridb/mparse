@@ -74,7 +74,7 @@ pkg parse =
 		/* compound types */
 		`Tyslice tydef#
 		`Typtr tydef#
-		`Tyarray (tydef#, node#)
+		`Tyarray (tydef#, expr#)
 		`Tystruct dcl#[:]
 		`Tyunion ucon#[:]
 		/* user defined types */

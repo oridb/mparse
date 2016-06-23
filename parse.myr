@@ -696,7 +696,35 @@ const tyname : (ts : tokstream# -> tydef#) = {ts
 }
 
 const tysuffixed = {ts, base
+	while true
+		match toknext(ts)
+		| (l, `Tderef):	base = mkty(l, `Typtr base)
+		| (l, `Tosqbrac):
+			match tokpeekt(ts)
+			| `Tcolon:
+				toknext(ts)
+				base = mkty(l, `Tyslice base)
+				expectcsqbrac(ts, "in slice type")
+			| _:
+				match expr(ts)
+				| `std.Some e:	base = mkty(l, `Tyarray (base, e))
+				| `std.None:	err(ts.loc, "expected expression in array size\n")
+				;;
+				expectcsqbrac(ts, "in array type")
+			;;
+		| _:
+			tokunget(ts)
+			break
+		;;
+	;;
 	-> base
+}
+
+const expectcsqbrac = {ts, msg
+	match toknext(ts)
+	| (l, `Tcsqbrac):	/* nothing */
+	| (l, tok):	err(l, "expected ']' in {}, got {}\n", msg, tok)
+	;;
 }
 
 const optendlns = {ts
