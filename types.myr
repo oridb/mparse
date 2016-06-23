@@ -1,6 +1,16 @@
 use std
 
+use "tokdefs"
+
 pkg parse =
+	type parser = struct
+		last	: std.option((srcloc, tok))
+		next	: std.option((srcloc, tok))
+		rest	: byte[:]
+		data	: byte[:]
+		loc	: srcloc
+	;;
+
 	type srcloc = struct
 		file	: byte[:]
 		line	: int

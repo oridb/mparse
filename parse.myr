@@ -10,10 +10,10 @@ use "node"
 use "util"
 
 pkg parse =
-	const tsfile	: (ts : tokstream# -> file#)
+	const tsfile	: (p : parser# -> file#)
 ;;
 
-const tsfile = {ts
+const tsfile = {p
 	var f
 	var t : tok
 	var vis : vis = `Visintern
@@ -33,17 +33,17 @@ const tsfile = {ts
 	f.globls.super = `std.Some f.builtin
 
 	/* parse */
-	optendlns(ts)
+	optendlns(p)
 	while true
-		match tokpeek(ts)
+		match tokpeek(p)
 		| (l, `Teof):	break
-		| (l, `Tuse):	usestmt(ts, f)
-		| (l, `Tpkg):	pkgdef(ts, f)
-		| (l, `Ttrait):	traitdef(ts, f)
-		| (l, `Ttype):	tydef(ts, f)
-		| (l, `Tendln):	endlns(ts)
+		| (l, `Tuse):	usestmt(p, f)
+		| (l, `Tpkg):	pkgdef(p, f)
+		| (l, `Ttrait):	traitdef(p, f)
+		| (l, `Ttype):	tydef(p, f)
+		| (l, `Tendln):	endlns(p)
 		| (l, tok):	
-			if !vardcl(ts, f, true, vis)
+			if !vardcl(p, f, true, vis)
 				err(l, "invalid top level item near {}", tok)
 			;;
 		;;
@@ -51,32 +51,32 @@ const tsfile = {ts
 	-> f
 }
 
-const usestmt = {ts, f
-	match toknext(ts)
+const usestmt = {p, f
+	match toknext(p)
 	| (l, `Tuse): /* ok */
 	| (l, t):	err(l, "unexpected token in use {}\n", t)
 	;;
 
-	match toknext(ts)
+	match toknext(p)
 	| (l, `Tstrlit str):	std.slpush(&f.uses, `Ulocal str)
 	| (l, `Tident id):	std.slpush(&f.uses, `Ulib id)
 	| (l, t):	err(l, "unexpected {} after use\n", t)
 	;;
 }
 
-const pkgdef = {ts, f
+const pkgdef = {p, f
 	std.fatal("unimplemented pkg\n")
 }
 
-const traitdef = {ts, f
+const traitdef = {p, f
 	std.fatal("unimplemented trait\n")
 }
 
-const tydef = {ts, f
+const tydef = {p, f
 	std.fatal("unimplemented type\n")
 }
 
-const vardcl = {ts, f, isglobl, vis
+const vardcl = {p, f, isglobl, vis
 	var dcl : dcl
 	var hadattr
 
@@ -89,9 +89,9 @@ const vardcl = {ts, f, isglobl, vis
 		.isglobl = isglobl,
 	]
 
-	hadattr = dclattrs(ts, &dcl)
+	hadattr = dclattrs(p, &dcl)
 	/* attributes (const | var) */
-	match tokpeek(ts)
+	match tokpeek(p)
 	| (l, `Tvar):	dcl.isconst = false
 	| (l, `Tconst):	dcl.isconst = true
 	| (l, `Tgeneric):	
@@ -104,38 +104,38 @@ const vardcl = {ts, f, isglobl, vis
 			-> false
 		;;
 	;;
-	if !dcltag(ts, &dcl)
+	if !dcltag(p, &dcl)
 		if hadattr
 		else
 			-> false
 		;;
 	;;
-	dclname(ts, &dcl)
-	dcltype(ts, &dcl)
-	dclinit(ts, &dcl)
+	dclname(p, &dcl)
+	dcltype(p, &dcl)
+	dclinit(p, &dcl)
 	std.slpush(&f.dcls, std.mk(dcl))
 	-> true
 }
 
 
-const dclname = {ts, dcl : dcl#
+const dclname = {p, dcl : dcl#
 	/* attributes (const | var) name */
-	match name(ts)
+	match name(p)
 	| `std.Some n:
 		if n.ns.len > 0 && !dcl.isextern
 			std.fatal("only extern decls may provide namespaces\n")
 		;;
 		dcl.name = n
 	| `std.None:	
-		std.fatal("expected name in decl, got {}\n", tokpeekt(ts))
+		std.fatal("expected name in decl, got {}\n", tokpeekt(p))
 	;;
 }
 
-const dcltype = {ts, dcl
-	match tokpeek(ts)
+const dcltype = {p, dcl
+	match tokpeek(p)
 	| (l, `Tcolon):
-		toknext(ts)
-		match typ(ts)
+		toknext(p)
+		match typ(p)
 		| `std.Some t:	dcl.ty = t
 		| `std.None:	err(l, "expected type after ':'\n")
 		;;
@@ -144,11 +144,11 @@ const dcltype = {ts, dcl
 	;;
 }
 
-const dclinit = {ts, dcl
-	match tokpeek(ts)
+const dclinit = {p, dcl
+	match tokpeek(p)
 	| (l, `Tasn):
-		toknext(ts)
-		match expr(ts)
+		toknext(p)
+		match expr(p)
 		| `std.Some e:	dcl.init = `std.Some e
 		| `std.None:	err(l, "expected initializer after '='\n")
 		;;
@@ -160,20 +160,20 @@ const dclinit = {ts, dcl
 	-> false
 }
 
-const expr = {ts
-	match unionexpr(ts)
-	| `std.Some e:	-> `std.Some exprcore(ts, e, 0)
+const expr = {p
+	match unionexpr(p)
+	| `std.Some e:	-> `std.Some exprcore(p, e, 0)
 	| `std.None:	-> `std.None
 	;;
 }
 
-const exprcore = {ts, lhs, minprec
+const exprcore = {p, lhs, minprec
 	var peek, peekloc, assoc
 	var prec, peekprec
 	var op, oploc
 	var rhs
 
-	(peekloc, peek) = tokpeek(ts)
+	(peekloc, peek) = tokpeek(p)
 	while true
 		(prec, assoc) = exprprec(peek) 
 		if prec < minprec
@@ -182,21 +182,21 @@ const exprcore = {ts, lhs, minprec
 
 		op = peek
 		oploc = peekloc
-		toknext(ts)
+		toknext(p)
 
-		match unionexpr(ts)
+		match unionexpr(p)
 		| `std.Some e:	rhs = e
-		| `std.None:	err(ts.loc, "expected primary expression after {}, near {}", op, tokpeekt(ts))
+		| `std.None:	err(p.loc, "expected primary expression after {}, near {}", op, tokpeekt(p))
 		;;
 
-		(peekloc, peek) = tokpeek(ts)
+		(peekloc, peek) = tokpeek(p)
 		while true
 			(peekprec, assoc) = exprprec(peek)
 			if (!assoc && peekprec <= prec) || (assoc && peekprec < prec)
 				break
 			;;
-			rhs = binexprcore(ts, rhs, peekprec)
-			(peekloc, peek) = tokpeek(ts)
+			rhs = binexprcore(p, rhs, peekprec)
+			(peekloc, peek) = tokpeek(p)
 		;;
 		match op
 		/* assignmets */
@@ -254,43 +254,43 @@ const exprprec = {tok
 	;;
 }
 
-const unionexpr = {ts
+const unionexpr = {p
 	var tag, expr
 
-	match tokpeek(ts)
+	match tokpeek(p)
 	| (l, `Ttick):
-		toknext(ts)
-		match name(ts)
+		toknext(p)
+		match name(p)
 		| `std.Some n:	tag = n
 		| `std.None:	err(l, "expected union tag after '`'\n")
 		;;
 
-		expr = castexpr(ts)
+		expr = castexpr(p)
 		-> `std.Some mkexpr(l, `Oucon (tag, expr))
 	| _:
-		-> castexpr(ts)
+		-> castexpr(p)
 	;;
 }
 
-const castexpr = {ts
+const castexpr = {p
 	var ty
 
-	match binexpr(ts)
+	match binexpr(p)
 	| `std.Some e:
-		match tokpeek(ts)
+		match tokpeek(p)
 		| (l, `Tcast):
-			toknextt(ts)
-			match toknext(ts)
+			toknextt(p)
+			match toknext(p)
 			| (pl, `Toparen):
 			| (pl, badtok):	err(l, "expected '(' after 'castto', got {}\n", badtok)
 			;;
 
-			match typ(ts)
+			match typ(p)
 			| `std.Some t:	ty = t
-			| `std.None:	err(ts.loc, "expected type in castto near {}\n", tokpeekt(ts))
+			| `std.None:	err(p.loc, "expected type in castto near {}\n", tokpeekt(p))
 			;;
 
-			match toknext(ts)
+			match toknext(p)
 			| (pl, `Tcparen):
 			| (pl, badtok):	err(l, "expected '(' after 'castto', got {}\n", badtok)
 			;;
@@ -304,20 +304,20 @@ const castexpr = {ts
 	;;
 }
 
-const binexpr = {ts
-	match prefixexpr(ts)
-	| `std.Some e:	-> `std.Some binexprcore(ts, e, 0)
+const binexpr = {p
+	match prefixexpr(p)
+	| `std.Some e:	-> `std.Some binexprcore(p, e, 0)
 	| `std.None:	-> `std.None
 	;;
 }
 
-const binexprcore = {ts, lhs, minprec
+const binexprcore = {p, lhs, minprec
 	var prec, peekprec
 	var op, oploc
 	var peek, peekloc
 	var rhs
 
-	(peekloc, peek) = tokpeek(ts)
+	(peekloc, peek) = tokpeek(p)
 	while true
 		prec = binprec(peek) 
 		if prec < minprec
@@ -326,21 +326,21 @@ const binexprcore = {ts, lhs, minprec
 
 		op = peek
 		oploc = peekloc
-		toknext(ts)
+		toknext(p)
 
-		match prefixexpr(ts)
+		match prefixexpr(p)
 		| `std.Some e:	rhs = e
-		| `std.None:	err(ts.loc, "expected primary expression after {}, near {}", op, tokpeekt(ts))
+		| `std.None:	err(p.loc, "expected primary expression after {}, near {}", op, tokpeekt(p))
 		;;
 
-		(peekloc, peek) = tokpeek(ts)
+		(peekloc, peek) = tokpeek(p)
 		while true
 			peekprec = binprec(peek)
 			if peekprec <= prec
 				break
 			;;
-			rhs = binexprcore(ts, rhs, peekprec)
-			(peekloc, peek) = tokpeek(ts)
+			rhs = binexprcore(p, rhs, peekprec)
+			(peekloc, peek) = tokpeek(p)
 		;;
 		match op
 		/* binary or */
@@ -387,97 +387,97 @@ const binprec = {tok
 	;;
 }
 
-const prefixexpr = {ts
-	match toknext(ts)
+const prefixexpr = {p
+	match toknext(p)
 	| (l, `Tinc):
-		match prefixexpr(ts)
+		match prefixexpr(p)
 		| `std.Some e:	-> `std.Some mkexpr(l, `Opreinc e)
 		| `std.None:	-> `std.None
 		;;
 	| (l, `Tdec):
-		match prefixexpr(ts)
+		match prefixexpr(p)
 		| `std.Some e:	-> `std.Some mkexpr(l, `Opredec e)
 		|`std.None:	-> `std.None
 		;;
 	| (l, `Tband):
-		match prefixexpr(ts)
+		match prefixexpr(p)
 		| `std.Some e:	-> `std.Some mkexpr(l, `Oaddr e)
 		|`std.None:	-> `std.None
 		;;
 	| (l, `Tlnot):
-		match prefixexpr(ts)
+		match prefixexpr(p)
 		| `std.Some e:	-> `std.Some mkexpr(l, `Olnot e)
 		|`std.None:	-> `std.None
 		;;
 	| (l, `Tbnot):
-		match prefixexpr(ts)
+		match prefixexpr(p)
 		| `std.Some e:	-> `std.Some mkexpr(l, `Obnot e)
 		|`std.None:	-> `std.None
 		;;
 	| (l, `Tminus):
-		match prefixexpr(ts)
+		match prefixexpr(p)
 		| `std.Some e:	-> `std.Some mkexpr(l, `Oneg e)
 		|`std.None:	-> `std.None
 		;;
 	| (l, `Tplus):
-		match prefixexpr(ts)
+		match prefixexpr(p)
 		| `std.Some e:	-> `std.Some e
 		|`std.None:	-> `std.None
 		;;
 	| _:	
-		tokunget(ts)
-		-> postfixexpr(ts)
+		tokunget(p)
+		-> postfixexpr(p)
 	;;
 }
 
-const postfixexpr = {ts
+const postfixexpr = {p
 	var e
 
-	match atomicexpr(ts)
+	match atomicexpr(p)
 	| `std.Some r:	e = r
 	| `std.None:	-> `std.None
 	;;
 
 	while true
-		match toknext(ts)
+		match toknext(p)
 		| (l, `Tdot):	
-			match toknext(ts)
+			match toknext(p)
 			| (ml, `Tident memb):	e = mkexpr(l, `Omemb (e, memb))
 			| (ml, badtok):	err(ml, "expected member after '.', got {}\n", badtok)
 			;;
 		| (l, `Tinc):	e = mkexpr(l, `Opostinc e)
 		| (l, `Tdec):	e = mkexpr(l, `Opostdec e)
 		| (l, `Tderef):	e = mkexpr(l, `Oderef e)
-		| (l, `Tosqbrac):	e = idxexpr(ts, e)
-		| (l, `Toparen):	e = callexpr(ts, e)
+		| (l, `Tosqbrac):	e = idxexpr(p, e)
+		| (l, `Toparen):	e = callexpr(p, e)
 		| tok:	
-			tokunget(ts)
+			tokunget(p)
 			break
 		;;
 	;;
 	-> `std.Some e
 }
 
-const idxexpr = {ts : tokstream#, base
+const idxexpr = {p : parser#, base
 	var hadsl
 	var lo, hi
 	var loc
 
-	loc = ts.loc
+	loc = p.loc
 
 	/* open [ is consumed by caller */
 
-	match expr(ts)
+	match expr(p)
 	| `std.Some e:	lo = `std.Some e
 	| `std.None:	lo = `std.None
 	;;
 
 	hadsl = false
-	match tokpeek(ts)
+	match tokpeek(p)
 	| (l, `Tcolon):
-		toknext(ts)
+		toknext(p)
 		hadsl = true
-		match expr(ts)
+		match expr(p)
 		| `std.Some e:	hi = `std.Some e
 		| `std.None:	hi = `std.None
 		;;
@@ -489,7 +489,7 @@ const idxexpr = {ts : tokstream#, base
 
 	;;
 
-	match toknext(ts)
+	match toknext(p)
 	| (_, `Tcsqbrac):	/* ok */
 	| (l, badtok):	err(l, "expected ']' after indexer, got {}\n", badtok)
 	;;
@@ -505,49 +505,49 @@ const idxexpr = {ts : tokstream#, base
 
 }
 
-const callexpr = {ts, e
+const callexpr = {p, e
 	var args
 	/* open ) is consumed by caller */
 
-	args = callargs(ts)
+	args = callargs(p)
 
-	match toknext(ts)
+	match toknext(p)
 	| (_, `Tcparen):	/* ok */
 	| (l, badtok):	err(l, "expected ')' after call, got {}\n", badtok)
 	;;
 	
-	-> mkexpr(ts.loc, `Ocall (e, args))
+	-> mkexpr(p.loc, `Ocall (e, args))
 
 }
 
-const callargs = {ts
+const callargs = {p
 	var args
 
 	args = [][:]
-	match expr(ts)
+	match expr(p)
 	| `std.None:	-> args
 	| `std.Some e:	std.slpush(&args, e)
 	;;
 
 	while true
-		match toknext(ts)
+		match toknext(p)
 		| (l, `Tcomma):
-			match expr(ts)
+			match expr(p)
 			| `std.Some e:	std.slpush(&args, e)
 			| `std.None:	err(l, "expected expression after ',' in function args\n")
 			;;
 		| _:
-			tokunget(ts)
+			tokunget(p)
 			break
 		;;
 	;;
 	-> args
 }
 
-const atomicexpr = {ts
+const atomicexpr = {p
 	var e
 
-	match toknext(ts)
+	match toknext(p)
 	| (l, `Tgap):		e = `std.Some mkexpr(l, `Ogap)
 	| (l, `Tident n):	e = `std.Some mkexpr(l, `Ovar [.ns="", .name=n])
 	| (l, `Tintlit i):	e = `std.Some mkexpr(l, `Olit `Lint i)
@@ -556,30 +556,30 @@ const atomicexpr = {ts
 	| (l, `Tchrlit c):	e = `std.Some mkexpr(l, `Olit `Lchr c)
 	| (l, `Tboollit b):	e = `std.Some mkexpr(l, `Olit `Lbool b)
 	| (l, `Tvoidlit):	e = `std.Some mkexpr(l, `Olit `Lvoid)
-	| (l, `Tsizeof):	e = sizeofexpr(ts, l)
-	| (l, `Tobrace):	e = funcexpr(ts, l)
+	| (l, `Tsizeof):	e = sizeofexpr(p, l)
+	| (l, `Tobrace):	e = funcexpr(p, l)
 	| _:
-		tokunget(ts)
+		tokunget(p)
 		e = `std.None
 	;;
 
 	-> e
 }
 
-const sizeofexpr = {ts, loc
+const sizeofexpr = {p, loc
 	var e
 
-	match toknext(ts)
+	match toknext(p)
 	| (_, `Toparen):	/* ok */
 	| (l, badtok):	err(l, "expected '(' after sizeof, got {}\n", badtok)
 	;;
 
-	match typ(ts)
+	match typ(p)
 	| `std.Some ty:	e = mkexpr(loc, `Osize ty)
-	| `std.None:	err(ts.loc, "expected type in sizeof, got {}\n", tokpeekt(ts))
+	| `std.None:	err(p.loc, "expected type in sizeof, got {}\n", tokpeekt(p))
 	;;
 
-	match toknext(ts)
+	match toknext(p)
 	| (_, `Toparen):	/* ok */
 	| (l, badtok):	err(l, "expected '(' after sizeof, got {}\n", badtok)
 	;;
@@ -587,30 +587,30 @@ const sizeofexpr = {ts, loc
 	-> `std.Some e
 }
 
-const funcexpr = {ts, loc
+const funcexpr = {p, loc
 	-> `std.None
 }
 
-const dclattrs = {ts, dcl
+const dclattrs = {p, dcl
 	var hadattr
 
 	hadattr = false
 	while true
-		match tokpeek(ts)
-		| (_, `Tattr `Attrpkglocal):	dcl.ispkglocal = true
-		| (_, `Tattr `Attrextern):	dcl.isextern = true
-		| (_, `Tattr `Attrnoret):	dcl.isnoret = true
+		match tokpeek(p)
+		| (_, `Tpkglocal):	dcl.ispkglocal = true
+		| (_, `Textern):	dcl.isextern = true
+		| (_, `Tnoret):		dcl.isnoret = true
 		| _:	break
 		;;
-		toknext(ts)
+		toknext(p)
 		hadattr = true
 	;;
 	-> hadattr
 }
 
-const dcltag = {ts, dcl
+const dcltag = {p, dcl
 	/* attributes (const | var) */
-	match tokpeek(ts)
+	match tokpeek(p)
 	| (_, `Tvar):	dcl.isconst = false
 	| (_, `Tconst):	dcl.isconst = true
 	| (_, `Tgeneric):	
@@ -619,126 +619,126 @@ const dcltag = {ts, dcl
 	| (l, badtok):
 		-> false
 	;;
-	toknext(ts)
+	toknext(p)
 	-> true
 }
 
-const name = {ts -> std.option(name)
+const name = {p -> std.option(name)
 	var ns, n
 
-	match tokpeek(ts)
+	match tokpeek(p)
 	| (l, `Tident id):	n = id
 	| (l, tok):	-> `std.None
 	;;
-	toknext(ts)
+	toknext(p)
 
-	match tokpeek(ts)
+	match tokpeek(p)
 	| (l, `Tdot):	ns = n
 	| (l, _):	-> `std.Some [.ns = "", .name = n]
 	;;
-	toknext(ts)
+	toknext(p)
 
-	match tokpeek(ts)
+	match tokpeek(p)
 	| (l, `Tident id):	n = id
 	| (l, tok):	err(l, "expected after '.', got {}\n", tok)
 	;;
-	toknext(ts)
+	toknext(p)
 
 	-> `std.Some [.ns=ns, .name=n]
 }
 
-const typ = {ts
+const typ = {p
 	var ty
 
-	match toknext(ts)
-	| (l, `Tstruct):	ty = tystruct(ts)
-	| (l, `Tunion):		ty = tyunion(ts)
+	match toknext(p)
+	| (l, `Tstruct):	ty = tystruct(p)
+	| (l, `Tunion):		ty = tyunion(p)
 	| (l, `Tellipsis):	ty = mkty(l, `Tyvalist)
 	| (l, `Ttyparam n):	ty = mkty(l, `Typaram n)
 	| (l, `Tident id):
-		tokunget(ts)
-		ty = tyname(ts)
+		tokunget(p)
+		ty = tyname(p)
 	| (l, badtok):	
-		tokunget(ts)
+		tokunget(p)
 		-> `std.None
 	;;
 
-	-> `std.Some tysuffixed(ts, ty)
+	-> `std.Some tysuffixed(p, ty)
 }
 
-const tystruct = {ts
+const tystruct = {p
 	/* already have struct token */
-	err(ts.loc, "struct not yet supported\n")
+	err(p.loc, "struct not yet supported\n")
 	-> std.alloc()
 }
 
-const tyunion = {ts
+const tyunion = {p
 	/* already have union token */
-	err(ts.loc, "struct not yet supported\n")
+	err(p.loc, "struct not yet supported\n")
 	-> std.alloc()
 }
 
-const tyname : (ts : tokstream# -> tydef#) = {ts
+const tyname = {p
 	var nam, params
 
-	match name(ts)
+	match name(p)
 	| `std.Some n:	nam = n
 	| `std.None:	std.die("we came hear after peeking an ident\n")
 	;;
 
 	params = [][:]
-	match tokpeek(ts)
+	match tokpeek(p)
 	| (l, `Toparen):	err(l, "param lists aren't yet supported\n")
 	| (l, _):
 	;;
 
-	-> mkty(ts.loc, `Tyunres (nam, params))
+	-> mkty(p.loc, `Tyunres (nam, params))
 }
 
-const tysuffixed = {ts, base
+const tysuffixed = {p, base
 	while true
-		match toknext(ts)
+		match toknext(p)
 		| (l, `Tderef):	base = mkty(l, `Typtr base)
 		| (l, `Tosqbrac):
-			match tokpeekt(ts)
+			match tokpeekt(p)
 			| `Tcolon:
-				toknext(ts)
+				toknext(p)
 				base = mkty(l, `Tyslice base)
-				expectcsqbrac(ts, "in slice type")
+				expectcsqbrac(p, "in slice type")
 			| _:
-				match expr(ts)
+				match expr(p)
 				| `std.Some e:	base = mkty(l, `Tyarray (base, e))
-				| `std.None:	err(ts.loc, "expected expression in array size\n")
+				| `std.None:	err(p.loc, "expected expression in array size\n")
 				;;
-				expectcsqbrac(ts, "in array type")
+				expectcsqbrac(p, "in array type")
 			;;
 		| _:
-			tokunget(ts)
+			tokunget(p)
 			break
 		;;
 	;;
 	-> base
 }
 
-const expectcsqbrac = {ts, msg
-	match toknext(ts)
+const expectcsqbrac = {p, msg
+	match toknext(p)
 	| (l, `Tcsqbrac):	/* nothing */
 	| (l, tok):	err(l, "expected ']' in {}, got {}\n", msg, tok)
 	;;
 }
 
-const optendlns = {ts
+const optendlns = {p
 	while true
-		match tokpeek(ts)
-		| (l, `Tendln): toknext(ts)
+		match tokpeek(p)
+		| (l, `Tendln): toknext(p)
 		| _:    break
 		;;
 	;;
 }
 
-const endlns = {ts
-	match tokpeek(ts)
-	| (l, `Tendln): optendlns(ts)
+const endlns = {p
+	match tokpeek(p)
+	| (l, `Tendln): optendlns(p)
 	| (l, tok):	err(l, "expected \\n, got {}\n", tok)
 	;;
 	-> true

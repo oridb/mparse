@@ -1,7 +1,5 @@
 use std
 
-use "types.use"
-
 pkg parse =
 	type tok = union
 		`Terror
@@ -97,7 +95,9 @@ pkg parse =
 		`Tpkg     /* pkg */
 		`Tident byte[:]
 		`Tsizeof  /* sizeof */
-		`Tattr attr   /* $attr */
+		`Tpkglocal   /* $attr */
+		`Textern   /* $attr */
+		`Tnoret
 	;;
 ;;
 
@@ -203,7 +203,9 @@ const tokfmt = {sb, ap, opts
 	| `Tret:	std.sbfmt(sb, "->")
 	| `Tuse:	std.sbfmt(sb, "use")
 	| `Tpkg:	std.sbfmt(sb, "pkg")
-	| `Tattr a:	std.sbfmt(sb, "{}", a)
+	| `Tpkglocal:	std.sbfmt(sb, "pkglocal")
+	| `Textern:	std.sbfmt(sb, "extern")
+	| `Tnoret:	std.sbfmt(sb, "noret")
 	| `Tsizeof:	std.sbfmt(sb, "sizeof")
 	| `Tident str:	std.sbfmt(sb, "{}", str)
 	;;
