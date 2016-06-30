@@ -8,12 +8,17 @@ use "util.use"
 pkg parse =
 	const setpkg	: (f : file#, st : stab#, name : byte[:]-> void)
 	const mkstab	: (-> stab#)
+
+	const putdcl	: (st : stab#, name : name, sym : dcl# -> void)
+	const putucon	: (st : stab#, name : name, sym : ucon# -> void)
+	const puttype	: (st : stab#, name : name, sym : tydef# -> void)
+	const puttypefwd	: (st : stab#, name : name, loc : srcloc -> void)
 ;;
 
 const mkstab = {
 	-> std.mk([
 		.super = `std.None,
-		.name = "",
+		.ns = "",
 		.isfunc = false,
 		.syms = std.mkht(stnamehash, stnameeq),
 		.types = std.mkht(stnamehash, stnameeq),
@@ -22,12 +27,56 @@ const mkstab = {
 	])
 }
 
-const setpkg = {f, st, name
-	if st.name.len != 0
-		std.fatal("package name already set for pkg {}\n", st.name)
+const setpkg = {f, st, ns
+	if st.ns.len != 0
+		std.fatal("package name already set for pkg {}\n", st.ns)
 	;;
-	st.name = name
-	std.htput(f.ns, name, st)
+	st.ns = ns
+	std.htput(f.ns, ns, st)
+}
+
+const putdcl = {st, n, sym
+	std.assert(std.streq(st.ns, n.ns), "sym name mismatches stab name\n")
+	match std.htget(st.syms, n)
+	| `std.Some `Dcl d:	err(sym.loc, "duplicate declaration of {}, first declared on {}\n", n, d.loc)
+	| `std.Some `Ucon u:	err(sym.loc, "duplicate declaration of {}, first declared on {}\n", n, u.loc)
+	| `std.None:	/* everthing is fine */
+	;;
+	std.htput(st.syms, n, `Dcl sym)
+}
+
+const putucon = {st, n, uc
+	std.assert(std.streq(st.ns, n.ns), "sym name mismatches stab name\n")
+	match std.htget(st.syms, n)
+	| `std.Some `Dcl d:	err(uc.loc, "duplicate declaration of {}, first declared on {}\n", n, d.loc)
+	| `std.Some `Ucon u:	err(uc.loc, "duplicate declaration of {}, first declared on {}\n", n, u.loc)
+	| `std.None:	/* everthing is fine */
+	;;
+	std.htput(st.syms, n, `Ucon uc)
+}
+
+const puttype = {st, n, ty
+	std.assert(std.streq(st.ns, n.ns), "sym name mismatches stab name\n")
+	match std.htget(st.types, n)
+	| `std.Some `Tyfwd _:	/* everything is fine */
+	| `std.Some `Trfwd l:	err(ty.loc, "{} initially declared as trait on {}\n", n, l)
+	| `std.Some `Tydef t:	err(ty.loc, "duplicate declaration of {}, first declared on {}\n", n, t.loc)
+	| `std.Some `Trdef t:	err(ty.loc, "duplicate declaration of {}, first declared on {}\n", n, t.loc)
+	| `std.None:	/* everything is fine */
+	;;
+	std.htput(st.types, n, `Tydef ty)
+}
+
+const puttypefwd = {st, n, loc
+	std.assert(std.streq(st.ns, n.ns), "sym name mismatches stab name\n")
+	match std.htget(st.types, n)
+	| `std.Some `Tyfwd _:	/* everything is fine */
+	| `std.Some `Tydef t:	/* everything is fine, although a bit weird to get a fwd after a def */
+	| `std.Some `Trfwd l:	err(loc, "{} initially declared as trait on {}\n", n, l)
+	| `std.Some `Trdef t:	err(loc, "duplicate declaration of {}, first declared on {}\n", n, t.loc)
+	| `std.None:	/* everything is fine */
+	;;
+	std.htput(st.types, n, `Tyfwd loc)
 }
 
 const stnamehash = {n

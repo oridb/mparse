@@ -33,17 +33,18 @@ const tsfile = {p
 	f.globls.super = `std.Some f.builtin
 
 	/* parse */
+	p.file = f
 	optendlns(p)
 	while true
 		match tokpeek(p)
 		| (l, `Teof):	break
-		| (l, `Tuse):	usestmt(p, f)
-		| (l, `Tpkg):	pkgdef(p, f)
-		| (l, `Ttrait):	traitdef(p, f)
-		| (l, `Ttype):	tydef(p, f)
+		| (l, `Tuse):	usestmt(p)
+		| (l, `Tpkg):	pkgdef(p)
+		| (l, `Ttrait):	traitdef(p)
+		| (l, `Ttype):	tydefn(p)
 		| (l, `Tendln):	endlns(p)
 		| (l, tok):	
-			if !vardcl(p, f, true, vis)
+			if !vardcl(p, true, vis)
 				err(l, "invalid top level item near {}", tok)
 			;;
 		;;
@@ -51,45 +52,85 @@ const tsfile = {p
 	-> f
 }
 
-const usestmt = {p, f
+const usestmt = {p
 	match toknext(p)
 	| (l, `Tuse): /* ok */
 	| (l, t):	err(l, "unexpected token in use {}\n", t)
 	;;
 
 	match toknext(p)
-	| (l, `Tstrlit str):	std.slpush(&f.uses, `Ulocal str)
-	| (l, `Tident id):	std.slpush(&f.uses, `Ulib id)
+	| (l, `Tstrlit str):	std.slpush(&p.file.uses, `Ulocal str)
+	| (l, `Tident id):	std.slpush(&p.file.uses, `Ulib id)
 	| (l, t):	err(l, "unexpected {} after use\n", t)
 	;;
 }
 
-const pkgdef = {p, f
+const pkgdef = {p
 	std.fatal("unimplemented pkg\n")
 }
 
-const traitdef = {p, f
+const traitdef = {p
 	std.fatal("unimplemented trait\n")
 }
 
-const tydef = {p, f
-	std.fatal("unimplemented type\n")
+const tydefn = {p
+	var name, loc, params : tydef#[:], ty
+
+	match toknext(p)
+	| (l, `Ttype):	/* consume */
+	| (l, tokbad):	err(l, "expected 'type', got {}\n", tokbad)
+	;;
+
+	match toknext(p)
+	| (l, `Tident id):	(name, loc) = (id, l)
+	| (l, tokbad):	err(l, "expected type name, got {}\n", tokbad)
+	;;
+
+	params = [][:]
+	match tokpeek(p)
+	| (l, `Toparen):	params = typarams(p)
+	| _:	/* nothing */
+	;;
+
+	match toknext(p)
+	| (l, `Tasn):
+		match typ(p)
+		| `std.Some t:	ty = `std.Some t
+		| `std.None:	err(l, "expected type definition after 'type {} ='\n", name)
+		;;
+	| (l, `Tendln):
+		ty = `std.None
+	| (l, tokbad):
+		err(l, "expected = after type, got {}\n", tokbad)
+	;;
+
+
+
+	match ty
+	| `std.Some t:	puttype(p.file.globls, [.ns = p.curns, .name=name], t)
+	| `std.None:	puttypefwd(p.file.globls, [.ns=p.curns, .name=name], loc)
+	;;
 }
 
-const vardcl = {p, f, isglobl, vis
-	var dcl : dcl
+const typarams = {p
+	std.fatal("typarams not implemented\n")
+	-> std.slalloc(0)
+}
+
+const vardcl = {p, isglobl, vis
+	var dcl : dcl#
 	var hadattr
 
 	/* attributes */
-	dcl = [
-		.id = f.dcls.len,
+	dcl = std.mk([
+		.id = p.file.dcls.len,
 		.vis = vis,
 		.init = `std.None,
 		.tr = `std.None,
 		.isglobl = isglobl,
-	]
+	])
 
-	hadattr = dclattrs(p, &dcl)
+	hadattr = dclattrs(p, dcl)
 	/* attributes (const | var) */
 	match tokpeek(p)
 	| (l, `Tvar):	dcl.isconst = false
@@ -97,23 +138,25 @@ const vardcl = {p, f, isglobl, vis
 	| (l, `Tgeneric):	
 		dcl.isconst = true
 		dcl.isgeneric = true
-	| (l, badtok):
+	| (l, tokbad):
 		if hadattr
-			err(l, "unexpected {} in declaration, got {}\n", badtok)
+			err(l, "unexpected {} in declaration, got {}\n", tokbad)
 		else
 			-> false
 		;;
 	;;
-	if !dcltag(p, &dcl)
+	if !dcltag(p, dcl)
 		if hadattr
+			err(p.loc, "expected declaration after attr names\n")
 		else
 			-> false
 		;;
 	;;
-	dclname(p, &dcl)
-	dcltype(p, &dcl)
-	dclinit(p, &dcl)
-	std.slpush(&f.dcls, std.mk(dcl))
+	dclname(p, dcl)
+	dcltype(p, dcl)
+	dclinit(p, dcl)
+	putdcl(p.file.globls, dcl.name, dcl)
+	std.slpush(&p.file.dcls, dcl)
 	-> true
 }
 
@@ -282,7 +325,7 @@ const castexpr = {p
 			toknextt(p)
 			match toknext(p)
 			| (pl, `Toparen):
-			| (pl, badtok):	err(l, "expected '(' after 'castto', got {}\n", badtok)
+			| (pl, tokbad):	err(l, "expected '(' after 'castto', got {}\n", tokbad)
 			;;
 
 			match typ(p)
@@ -292,7 +335,7 @@ const castexpr = {p
 
 			match toknext(p)
 			| (pl, `Tcparen):
-			| (pl, badtok):	err(l, "expected '(' after 'castto', got {}\n", badtok)
+			| (pl, tokbad):	err(l, "expected '(' after 'castto', got {}\n", tokbad)
 			;;
 
 			-> `std.Some mkexpr(l, `Ocast (e, ty))
@@ -443,7 +486,7 @@ const postfixexpr = {p
 		| (l, `Tdot):	
 			match toknext(p)
 			| (ml, `Tident memb):	e = mkexpr(l, `Omemb (e, memb))
-			| (ml, badtok):	err(ml, "expected member after '.', got {}\n", badtok)
+			| (ml, tokbad):	err(ml, "expected member after '.', got {}\n", tokbad)
 			;;
 		| (l, `Tinc):	e = mkexpr(l, `Opostinc e)
 		| (l, `Tdec):	e = mkexpr(l, `Opostdec e)
@@ -491,7 +534,7 @@ const idxexpr = {p : parser#, base
 
 	match toknext(p)
 	| (_, `Tcsqbrac):	/* ok */
-	| (l, badtok):	err(l, "expected ']' after indexer, got {}\n", badtok)
+	| (l, tokbad):	err(l, "expected ']' after indexer, got {}\n", tokbad)
 	;;
 
 	if hadsl
@@ -513,7 +556,7 @@ const callexpr = {p, e
 
 	match toknext(p)
 	| (_, `Tcparen):	/* ok */
-	| (l, badtok):	err(l, "expected ')' after call, got {}\n", badtok)
+	| (l, tokbad):	err(l, "expected ')' after call, got {}\n", tokbad)
 	;;
 	
 	-> mkexpr(p.loc, `Ocall (e, args))
@@ -571,7 +614,7 @@ const sizeofexpr = {p, loc
 
 	match toknext(p)
 	| (_, `Toparen):	/* ok */
-	| (l, badtok):	err(l, "expected '(' after sizeof, got {}\n", badtok)
+	| (l, tokbad):	err(l, "expected '(' after sizeof, got {}\n", tokbad)
 	;;
 
 	match typ(p)
@@ -581,7 +624,7 @@ const sizeofexpr = {p, loc
 
 	match toknext(p)
 	| (_, `Toparen):	/* ok */
-	| (l, badtok):	err(l, "expected '(' after sizeof, got {}\n", badtok)
+	| (l, tokbad):	err(l, "expected '(' after sizeof, got {}\n", tokbad)
 	;;
 
 	-> `std.Some e
@@ -616,7 +659,7 @@ const dcltag = {p, dcl
 	| (_, `Tgeneric):	
 		dcl.isconst = true
 		dcl.isgeneric = true
-	| (l, badtok):
+	| (l, tokbad):
 		-> false
 	;;
 	toknext(p)
@@ -658,7 +701,7 @@ const typ = {p
 	| (l, `Tident id):
 		tokunget(p)
 		ty = tyname(p)
-	| (l, badtok):	
+	| (l, tokbad):	
 		tokunget(p)
 		-> `std.None
 	;;
@@ -667,15 +710,47 @@ const typ = {p
 }
 
 const tystruct = {p
-	/* already have struct token */
-	err(p.loc, "struct not yet supported\n")
 	-> std.alloc()
 }
 
 const tyunion = {p
-	/* already have union token */
-	err(p.loc, "struct not yet supported\n")
-	-> std.alloc()
+	var u, elts, loc
+	var tag, tagloc, ty
+
+	loc = p.loc
+	elts = [][:]
+	while true
+		match tokpeek(p)
+		| (l, `Ttick):	tagloc = l
+		| _:	break
+		;;
+
+		match toknext(p)
+		| (l, `Tident n):	tag = n
+		| (l, tokbad):	err(l, "expected tag name after '`', got {}\n", tokbad)
+		;;
+
+		match tokpeek(p)
+		| (l, `Tendln):	ty = `std.None
+		| (l, _):
+			match typ(p)
+			| `std.Some t:	ty = `std.Some t
+			| `std.None:	err(l, "expected type or endln after union tag\n")
+			;;
+		;;
+		std.slpush(&elts, std.mk([
+			.loc = tagloc,
+			.tag = [.ns="", .name=tag],
+			.ety = ty,
+		]))
+
+	;;
+
+	u = mkty(p.loc, `Tyunion elts)
+	for e in elts
+		e.uty = u
+	;;
+	-> u
 }
 
 const tyname = {p

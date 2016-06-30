@@ -179,18 +179,16 @@ const exprdump = {sb, e
 const stabdump = {sb, st, ind
 	var keys
 
-	if st.name.len != 0
-		ifmt(sb, ind, "ns: {}", st.name)
-	;;
+	ifmt(sb, ind, "stab {} {{\n", st.ns)
 	keys = std.htkeys(st.syms)
 	for k in keys
 		match std.get(std.htget(st.syms, k))
 		| `Dcl d:	
-			ifmt(sb, ind, "{} : {}\n", k, d.ty)
+			ifmt(sb, ind + 1, "{} : {}\n", k, d.ty)
 		| `Ucon uc:	
 			match uc.ety
-			| `std.Some t:	ifmt(sb, ind, "{} : {}\n", k, t)
-			| `std.None:	ifmt(sb, ind, "{}\n", k)
+			| `std.Some t:	ifmt(sb, ind + 1, "{} : {}\n", k, t)
+			| `std.None:	ifmt(sb, ind + 1, "{}\n", k)
 			;;
 		;;
 	;;
@@ -199,13 +197,14 @@ const stabdump = {sb, st, ind
 	keys = std.htkeys(st.types)
 	for k in keys
 		match std.get(std.htget(st.types, k))
-		| `Tyfwd:	ifmt(sb, ind, "type {} [PROTO]", k)
-		| `Trfwd:	ifmt(sb, ind, "trait {} [PROTO]", k)
-		| `Tydef d:	ifmt(sb, ind, "type {} = {}\n", k, d)
-		| `Trdef tr:	ifmt(sb, ind, "trait {} = ...\n", k)
+		| `Tyfwd _:	ifmt(sb, ind + 1, "type {} [PROTO]\n", k)
+		| `Trfwd _:	ifmt(sb, ind + 1, "trait {} [PROTO]\n", k)
+		| `Tydef d:	ifmt(sb, ind + 1, "type {} = {}\n", k, d)
+		| `Trdef tr:	ifmt(sb, ind + 1, "trait {} = ...\n", k)
 		;;
 	;;
 	std.slfree(keys)
+	ifmt(sb, ind, "}}\n")
 }
 
 const namedump = {sb, n
@@ -262,10 +261,10 @@ const structdump = {sb, dcls
 	std.sbfmt(sb, ";;")
 }
 
-const uniondump = {sb, uconsj
+const uniondump = {sb, ucons
 	std.sbfmt(sb, "union\n")
-	for uc in uconsj
-		std.sbfmt(sb, "`{} {}\n", uc.name, uc.ety)
+	for uc in ucons
+		std.sbfmt(sb, "`{} {}\n", uc.tag, uc.ety)
 	;;
 	std.sbfmt(sb, ";;")
 }
