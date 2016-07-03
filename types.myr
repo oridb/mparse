@@ -46,14 +46,11 @@ pkg parse =
 
 	type stmt = union
 		`Nexpr	expr#
-		`Nlit	lit
 		`Nloop	loopstmt#
 		`Niter	iterstmt#
 		`Nif	ifstmt#
 		`Nmatch matchstmt#
-		`Ncase	matchcase#
 		`Ndcl	dcl#
-		`Nfunc	func#
 		`Ntrait traitdef#
 		`Nimpl	impldef#
 	;;

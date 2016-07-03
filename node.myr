@@ -7,6 +7,7 @@ pkg parse =
 	const mkexpr	: (l : srcloc, e : exprop -> expr#)
 	const mkblk	: (l : srcloc, st : stab#, stmts : stmt#[:] -> block#)
 	const mkfunc	: (l : srcloc, st : stab#, ty : tydef#, args : dcl#[:], body : block# -> func#)
+	const mkstmt	: (l : srcloc, st : stmt -> stmt#)
 
 	/* type nodes */
 	const mktyvar	: (l : srcloc -> tydef#)
@@ -40,6 +41,10 @@ const mkfunc = {l, st, ty, args, body
 		.args = args,
 		.body = body,
 	])
+}
+
+const mkstmt = {l, st
+	-> std.mk(st)
 }
 
 const mktyvar = {l

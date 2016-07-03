@@ -673,10 +673,7 @@ const funcexpr = {p, loc
 	| (l, tokbad):	err(l, "expected function arguments near {}\n", tokbad)
 	;;
 
-	match blkbody(p, st)
-	| `std.Some b:	blk = b
-	| `std.None:	blk = mkblk(p.loc, st, [][:])
-	;;
+	blk = blockbody(p, st)
 
 	optendlns(p)
 	match toknext(p)
@@ -688,7 +685,92 @@ const funcexpr = {p, loc
 	-> mkexpr(loc, `Olit `Lfunc fn)
 }
 
-const blkbody = {p, st
+const ifstmt = {p
+	-> `std.None
+}
+
+const forstmt = {p
+	-> `std.None
+}
+
+const whilestmt = {p
+	-> `std.None
+}
+
+const matchstmt = {p
+	-> `std.None
+}
+
+const dclstmt = {p
+	-> `std.None
+}
+
+const typestmt = {p
+	-> `std.None
+}
+
+const traitstmt = {p
+	-> `std.None
+}
+
+const implstmt = {p
+	-> `std.None
+}
+
+const blockbody = {p, st
+	var stmts
+
+	stmts = [][:]
+	while true
+		match stmt(p)
+		| `std.Some s:	std.slpush(&stmts, s)
+		| `std.None:	break
+		;;
+	;;
+	-> mkblk(p.loc, st, stmts)
+}
+
+const stmt = {p
+	var loc
+
+	loc = p.loc
+	match expr(p)
+	| `std.Some e:	-> `std.Some mkstmt(loc, `Nexpr e)
+	| `std.None:	/* nothing */
+	;;
+	match forstmt(p)
+	| `std.Some e:	-> `std.Some mkstmt(loc, `Nloop e)
+	| `std.None:	/* nothing */
+	;;
+	match whilestmt(p)
+	| `std.Some e:	-> `std.Some mkstmt(loc, `Niter e)
+	| `std.None:	/* nothing */
+	;;
+	match ifstmt(p)
+	| `std.Some e:	-> `std.Some mkstmt(loc, `Nif e)
+	| `std.None:	/* nothing */
+	;;
+	match matchstmt(p)
+	| `std.Some e:	-> `std.Some mkstmt(loc, `Nmatch e)
+	| `std.None:	/* nothing */
+	;;
+	match dclstmt(p)
+	| `std.Some e:	-> `std.Some mkstmt(loc, `Ndcl e)
+	| `std.None:	/* nothing */
+	;;
+	match traitstmt(p)
+	| `std.Some e:	-> `std.Some mkstmt(loc, `Ntrait e)
+	| `std.None:	/* nothing */
+	;;
+	match implstmt(p)
+	| `std.Some e:	-> `std.Some mkstmt(loc, `Nimpl e)
+	| `std.None:	/* nothing */
+	;;
+	match typestmt(p)
+	| `std.Some (n, t):	puttype(p.curstab, t, n)
+	| `std.None:	/* nothing */
+	;;
+
 	-> `std.None
 }
 

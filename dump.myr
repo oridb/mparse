@@ -377,6 +377,7 @@ const blkdump : (sb : std.strbuf#, blk : block#, ind : int, show : bool -> void)
 	;;
 	for s in blk.stmts
 		stmtdump(sb, s, ind + 1)
+		std.sbputs(sb, "\n")
 	;;
 	ifmt(sb, ind, "}}\n")
 }
@@ -384,14 +385,11 @@ const blkdump : (sb : std.strbuf#, blk : block#, ind : int, show : bool -> void)
 const stmtdump = {sb, stmt, ind
 	match stmt
 	| &(`Nexpr s):	exprdump(sb, s, ind)
-	| &(`Nlit s):	litdump(sb, s, ind)
 	| &(`Nloop s):	std.fatal("loop not yet dumped\n")
 	| &(`Niter s):	std.fatal("iter not yet dumped\n")
 	| &(`Nif s):	std.fatal("if not yet implemented\n")
 	| &(`Nmatch s):	std.fatal("match not yet implemented\n")
-	| &(`Ncase s):	std.fatal("case not yet implemented\n")
 	| &(`Ndcl s):	std.fatal("dcl not yet implemented\n")
-	| &(`Nfunc s):	std.fatal("func not yet implemented\n")
 	| &(`Ntrait s):	std.fatal("trait not yet implemented\n")
 	| &(`Nimpl s):	std.fatal("impl not yet implemented\n")
 	;;
