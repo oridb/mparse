@@ -134,7 +134,7 @@ const dcldump = {sb, dcl, ind
 		dcl.ispkglocal, dcl.isgeneric)
 	match dcl.init
 	| `std.Some e:	exprdump(sb, e, ind + 2)
-	| `std.None:	ifmt(sb, ind, "<uninitialized>")
+	| `std.None:	ifmt(sb, ind+2, "<uninitialized>")
 	;;
 	std.sbfmt(sb, "\n")
 }

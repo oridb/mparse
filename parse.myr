@@ -668,7 +668,7 @@ const funcexpr = {p, loc
 	st = mkstab(`std.Some p.curstab)
 	pushstab(p, st)
 	match tokpeek(p)
-	| (l, `Tident id):	err(l, "don't yet support func args\n")
+	| (l, `Tident id):	(ty, args) = funcargs(p)
 	| (l, `Tendln):	ty = mkty(loc, `Tyfunc std.sldup([mktyvar(loc)][:]))	/* (-> $t) */
 	| (l, tokbad):	err(l, "expected function arguments near {}\n", tokbad)
 	;;
@@ -683,6 +683,35 @@ const funcexpr = {p, loc
 
 	fn = mkfunc(loc, st, ty, args, blk)
 	-> mkexpr(loc, `Olit `Lfunc fn)
+}
+
+const funcargs = {p
+	var loc, args, types
+
+	loc = p.loc
+	args = [][:]
+	types = [][:]
+	while true
+		match dclcore(p)
+		| `std.Some dcl:
+			std.slpush(&args, dcl)
+			std.slpush(&types, dcl.ty)
+		| `std.None:
+			break
+		;;
+	;;
+
+	match tokpeek(p)
+	| (l, `Tret):
+		toknext(p)
+		match typ(p)
+		| `std.Some ty:	std.slput(&types, 0, ty)
+		| `std.None:	err(l, "expected type after '->', got {}\n", tokpeekt(p))
+		;;
+	| (l, _):
+		std.slput(&types, 0, mktyvar(l))
+	;;
+	-> (mkty(loc, `Tyfunc types), args)
 }
 
 const ifstmt = {p
