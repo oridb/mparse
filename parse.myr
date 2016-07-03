@@ -26,11 +26,12 @@ const tsfile = {p
 		.dcls = [][:],
 		.extinit = [][:],
 		.init = `std.None,
-		.globls = mkstab(),
-		.builtin = mkstab(),
+		.globls = mkstab(`std.None),
+		.builtin = mkstab(`std.None),
 		.ns = std.mkht(std.strhash, std.streq),
 	])
 	f.globls.super = `std.Some f.builtin
+	pushstab(p, f.globls)
 
 	/* parse */
 	p.file = f
@@ -103,7 +104,6 @@ const tydefn = {p
 	| (l, tokbad):
 		err(l, "expected = after type, got {}\n", tokbad)
 	;;
-
 
 
 	match ty
@@ -599,8 +599,8 @@ const atomicexpr = {p
 	| (l, `Tchrlit c):	e = `std.Some mkexpr(l, `Olit `Lchr c)
 	| (l, `Tboollit b):	e = `std.Some mkexpr(l, `Olit `Lbool b)
 	| (l, `Tvoidlit):	e = `std.Some mkexpr(l, `Olit `Lvoid)
+	| (l, `Tobrace):	e = `std.Some funcexpr(p, l)
 	| (l, `Tsizeof):	e = sizeofexpr(p, l)
-	| (l, `Tobrace):	e = funcexpr(p, l)
 	| _:
 		tokunget(p)
 		e = `std.None
@@ -631,6 +631,35 @@ const sizeofexpr = {p, loc
 }
 
 const funcexpr = {p, loc
+	/* opening { already matched */
+	var args, blk, st, ty
+	var fn
+
+	args = [][:]
+	st = mkstab(`std.Some p.curstab)
+	pushstab(p, st)
+	match toknext(p)
+	| (l, `Tident id):	err(l, "don't yet support func args\n")
+	| (l, `Tendln):	ty = mkty(loc, `Tyfunc std.sldup([mktyvar(loc)][:]))	/* (-> $t) */
+	| (l, tokbad):	err(l, "expected function arguments near {}\n", tokbad)
+	;;
+
+	match blkbody(p, st)
+	| `std.Some b:	blk = b
+	| `std.None:	blk = mkblk(p.loc, st, [][:])
+	;;
+
+	optendlns(p)
+	match toknext(p)
+	| (l, `Tcbrace):	/* we're ok */
+	| (l, tokbad):	err(l, "expected '}' at end of function, got {}\n", tokbad)
+	;;
+
+	fn = mkfunc(loc, st, ty, args, blk)
+	-> mkexpr(loc, `Olit `Lfunc fn)
+}
+
+const blkbody = {p, st
 	-> `std.None
 }
 

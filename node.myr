@@ -6,11 +6,16 @@ use "type"
 pkg parse =
 	/* expr nodes */
 	const mkexpr	: (l : srcloc, e : exprop -> expr#)
+	const mkblk	: (l : srcloc, st : stab#, stmts : stmt#[:] -> block#)
+	const mkfunc	: (l : srcloc, st : stab#, ty : tydef#, args : dcl#[:], body : block# -> func#)
 
 	/* type nodes */
 	const mktyvar	: (l : srcloc -> tydef#)
 	const mkty	: (l : srcloc, ty : ty -> tydef#)
 ;;
+
+/* global state */
+var ntypes	: int64 = 0
 
 const mkexpr = {l, e
 	-> std.mk([
@@ -20,8 +25,23 @@ const mkexpr = {l, e
 	])
 }
 
+const mkblk = {l, st, stmts
+	-> std.mk([
+		.loc = l,
+		.stab = st,
+		.stmts = stmts,
+	])
+}
 
-var ntypes	: int64 = 0
+const mkfunc = {l, st, ty, args, body
+	-> std.mk([
+		.loc = l,
+		.stab = st,
+		.ty = ty,
+		.args = args,
+		.body = body,
+	])
+}
 
 const mktyvar = {l
 	-> mkty(l, `Tyvar ntypes)
@@ -34,7 +54,7 @@ const mkty = {l, ty
 		.loc = l,
 		.fixed = false,
 		.found = false,
-		.traits = std.mkbs()
+		.traits = std.mkbs(),
 	])
 }
 

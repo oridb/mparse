@@ -7,7 +7,9 @@ use "util.use"
 
 pkg parse =
 	const setpkg	: (f : file#, st : stab#, name : byte[:]-> void)
-	const mkstab	: (-> stab#)
+	const mkstab	: (super : std.option(stab#) -> stab#)
+	const pushstab	: (p : parser#, st : stab# -> void)
+	const popstab	: (p : parser# -> void)
 
 	const putdcl	: (st : stab#, name : name, sym : dcl# -> void)
 	const putucon	: (st : stab#, name : name, sym : ucon# -> void)
@@ -15,9 +17,9 @@ pkg parse =
 	const puttypefwd	: (st : stab#, name : name, loc : srcloc -> void)
 ;;
 
-const mkstab = {
+const mkstab = {super
 	-> std.mk([
-		.super = `std.None,
+		.super = super,
 		.ns = "",
 		.isfunc = false,
 		.syms = std.mkht(stnamehash, stnameeq),
@@ -25,6 +27,18 @@ const mkstab = {
 		.impls = std.mkht(stnamehash, stnameeq),
 		.env = std.mkht(stnamehash, stnameeq),
 	])
+}
+
+const pushstab = {p, st
+	std.slpush(&p.stabstk, st)
+	p.curstab = st
+}
+
+const popstab = {p
+	std.slpop(&p.stabstk)
+	if p.stabstk.len > 0
+		p.curstab = p.stabstk[p.stabstk.len - 1]
+	;;
 }
 
 const setpkg = {f, st, ns

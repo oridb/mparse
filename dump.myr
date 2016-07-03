@@ -14,6 +14,8 @@ const __init__ = {
 	var name : name
 	var ty : tydef
 	var lit : lit
+	var fn : func
+	var blk : block
 
 	std.fmtinstall(std.typeof(&f), fmtfile, [][:])
 	std.fmtinstall(std.typeof(&d), fmtdcl, [][:])
@@ -21,6 +23,8 @@ const __init__ = {
 	std.fmtinstall(std.typeof(&st), fmtstab, [][:])
 	std.fmtinstall(std.typeof(name), fmtname, [][:])
 	std.fmtinstall(std.typeof(&ty), fmttydef, [][:])
+	std.fmtinstall(std.typeof(&fn), fmtfn, [][:])
+	std.fmtinstall(std.typeof(&blk), fmtblk, [][:])
 	std.fmtinstall(std.typeof(lit), fmtlit, [][:])
 }
 
@@ -45,7 +49,7 @@ const fmtstab = {sb, ap, opts
 const fmtexpr = {sb, ap, opts
 	var f : expr#
 	f = std.vanext(ap)
-	exprdump(sb, f)
+	exprdump(sb, f, 0)
 }
 
 const fmtname = {sb, ap, opts
@@ -66,7 +70,21 @@ const fmtlit = {sb, ap, opts
 	var lit : lit
 
 	lit = std.vanext(ap)
-	litdump(sb, lit)
+	litdump(sb, lit, 0)
+}
+
+const fmtfn = {sb, ap, opts
+	var fn : func#
+
+	fn = std.vanext(ap)
+	fndump(sb, fn, 0)
+}
+
+const fmtblk = {sb, ap, opts
+	var blk : block#
+
+	blk = std.vanext(ap)
+	blkdump(sb, blk, 0, true)
 }
 
 const filedump = {sb, f, ind
@@ -105,74 +123,78 @@ const dcldump = {sb, dcl, ind
 		dcl.isextern, dcl.isimport, dcl.ishidden)
 	ifmt(sb, ind + 2, "pkglocal:{}, generic:{}\n", \
 		dcl.ispkglocal, dcl.isgeneric)
-	ifmt(sb, ind + 1, "{}", dcl.init)
+	match dcl.init
+	| `std.Some e:	exprdump(sb, e, ind + 2)
+	| `std.None:	ifmt(sb, ind, "<uninitialized>")
+	;;
+	std.sbfmt(sb, "\n")
 }
 
-const exprdump = {sb, e
+const exprdump = {sb, e, ind
 	match e#
-	| [.e = `Oadd (a, b)]:	std.sbfmt(sb, "({} + {})", a, b)
-	| [.e = `Osub (a, b)]:	std.sbfmt(sb, "({} - {})", a, b)
-	| [.e = `Omul (a, b)]:	std.sbfmt(sb, "({} * {})", a, b)
-	| [.e = `Odiv (a, b)]:	std.sbfmt(sb, "({} / {})", a, b)
-	| [.e = `Omod (a, b)]:	std.sbfmt(sb, "({} % {})", a, b)
-	| [.e = `Oneg exp]:	std.sbfmt(sb, "(-{})", exp)
-	| [.e = `Obor (a, b)]:	std.sbfmt(sb, "({} | {})", a, b)
-	| [.e = `Oband (a, b)]:	std.sbfmt(sb, "({} & {})", a, b)
-	| [.e = `Obxor (a, b)]:	std.sbfmt(sb, "({} ^ {})", a, b)
-	| [.e = `Obsl (a, b)]:	std.sbfmt(sb, "({} << {})", a, b)
-	| [.e = `Obsr (a, b)]:	std.sbfmt(sb, "({} >> {})", a, b)
-	| [.e = `Obnot exp]:	std.sbfmt(sb, "(~{})", exp)
-	| [.e = `Opreinc exp]:	std.sbfmt(sb, "(++{})", exp)
-	| [.e = `Opostinc exp]:	std.sbfmt(sb, "({}++)", exp)
-	| [.e = `Opredec exp]:	std.sbfmt(sb, "(++{})", exp)
-	| [.e = `Opostdec exp]:	std.sbfmt(sb, "({}--)", exp)
-	| [.e = `Oaddr exp]:	std.sbfmt(sb, "(&{})", exp)
-	| [.e = `Oderef exp]:	std.sbfmt(sb, "({}#)", exp)
-	| [.e = `Olor (a, b)]:	std.sbfmt(sb, "({} || {})", a, b)
-	| [.e = `Oland (a, b)]:	std.sbfmt(sb, "({} && {})", a, b)
-	| [.e = `Olnot exp]:	std.sbfmt(sb, "(!{})", exp)
-	| [.e = `Oeq (a, b)]:	std.sbfmt(sb, "({} == {})", a, b)
-	| [.e = `One (a, b)]:	std.sbfmt(sb, "({} != {})", a, b)
-	| [.e = `Ogt (a, b)]:	std.sbfmt(sb, "({} > {})", a, b)
-	| [.e = `Oge (a, b)]:	std.sbfmt(sb, "({} >= {})", a, b)
-	| [.e = `Olt (a, b)]:	std.sbfmt(sb, "({} < {})", a, b)
-	| [.e = `Ole (a, b)]:	std.sbfmt(sb, "({} <= {})", a, b)
-	| [.e = `Oasn (a, b)]:	std.sbfmt(sb, "({} = {})", a, b)
-	| [.e = `Oaddeq (a, b)]:	std.sbfmt(sb, "({} += {})", a, b)
-	| [.e = `Osubeq (a, b)]:	std.sbfmt(sb, "({} -= {})", a, b)
-	| [.e = `Omuleq (a, b)]:	std.sbfmt(sb, "({} *= {})", a, b)
-	| [.e = `Odiveq (a, b)]:	std.sbfmt(sb, "({} /= {})", a, b)
-	| [.e = `Omodeq (a, b)]:	std.sbfmt(sb, "({} %= {})", a, b)
-	| [.e = `Oboreq (a, b)]:	std.sbfmt(sb, "({} |= {})", a, b)
-	| [.e = `Obandeq (a, b)]:	std.sbfmt(sb, "({} &= {})", a, b)
-	| [.e = `Obxoreq (a, b)]:	std.sbfmt(sb, "({} ^= {})", a, b)
-	| [.e = `Obsleq (a, b)]:	std.sbfmt(sb, "({} <<= {})", a, b)
-	| [.e = `Obsreq (a, b)]:	std.sbfmt(sb, "({} >>= {})", a, b)
-	| [.e = `Oidx (a, b)]:	std.sbfmt(sb, "{}[{}]", a, b)
-	| [.e = `Oslice (a, b, c)]:	std.sbfmt(sb, "{}[{} : {}]", a, b, c)
-	| [.e = `Omemb (a, memb)]:	std.sbfmt(sb, "{}.{}", a, memb)
-	| [.e = `Osize ty]:	std.sbfmt(sb, "sizeof({})", ty)
-	| [.e = `Ocast exp]:	std.sbfmt(sb, "{} castto({})", exp)
-	| [.e = `Oret exp]:	std.sbfmt(sb, "-> {}", exp)
-	| [.e = `Ojmp name]:	std.sbfmt(sb, "goto {}", name)
-	| [.e = `Obreak]:		std.sbfmt(sb, "break")
-	| [.e = `Ocontinue]:	std.sbfmt(sb, "continue")
-	| [.e = `Ovar name]:	std.sbfmt(sb, "{}", name)
-	| [.e = `Ogap]:		std.sbfmt(sb, "_")
-	| [.e = `Olit lit]:	std.sbfmt(sb, "{}", lit)
-	| [.e = `Ocall (f, args)]:	std.sbfmt(sb, "{}({})", f, args)
+	| [.e = `Oadd (a, b)]:	ifmt(sb, ind, "({} + {})", a, b)
+	| [.e = `Osub (a, b)]:	ifmt(sb, ind, "({} - {})", a, b)
+	| [.e = `Omul (a, b)]:	ifmt(sb, ind, "({} * {})", a, b)
+	| [.e = `Odiv (a, b)]:	ifmt(sb, ind, "({} / {})", a, b)
+	| [.e = `Omod (a, b)]:	ifmt(sb, ind, "({} % {})", a, b)
+	| [.e = `Oneg exp]:	ifmt(sb, ind, "(-{})", exp)
+	| [.e = `Obor (a, b)]:	ifmt(sb, ind, "({} | {})", a, b)
+	| [.e = `Oband (a, b)]:	ifmt(sb, ind, "({} & {})", a, b)
+	| [.e = `Obxor (a, b)]:	ifmt(sb, ind, "({} ^ {})", a, b)
+	| [.e = `Obsl (a, b)]:	ifmt(sb, ind, "({} << {})", a, b)
+	| [.e = `Obsr (a, b)]:	ifmt(sb, ind, "({} >> {})", a, b)
+	| [.e = `Obnot exp]:	ifmt(sb, ind, "(~{})", exp)
+	| [.e = `Opreinc exp]:	ifmt(sb, ind, "(++{})", exp)
+	| [.e = `Opostinc exp]:	ifmt(sb, ind, "({}++)", exp)
+	| [.e = `Opredec exp]:	ifmt(sb, ind, "(++{})", exp)
+	| [.e = `Opostdec exp]:	ifmt(sb, ind, "({}--)", exp)
+	| [.e = `Oaddr exp]:	ifmt(sb, ind, "(&{})", exp)
+	| [.e = `Oderef exp]:	ifmt(sb, ind, "({}#)", exp)
+	| [.e = `Olor (a, b)]:	ifmt(sb, ind, "({} || {})", a, b)
+	| [.e = `Oland (a, b)]:	ifmt(sb, ind, "({} && {})", a, b)
+	| [.e = `Olnot exp]:	ifmt(sb, ind, "(!{})", exp)
+	| [.e = `Oeq (a, b)]:	ifmt(sb, ind, "({} == {})", a, b)
+	| [.e = `One (a, b)]:	ifmt(sb, ind, "({} != {})", a, b)
+	| [.e = `Ogt (a, b)]:	ifmt(sb, ind, "({} > {})", a, b)
+	| [.e = `Oge (a, b)]:	ifmt(sb, ind, "({} >= {})", a, b)
+	| [.e = `Olt (a, b)]:	ifmt(sb, ind, "({} < {})", a, b)
+	| [.e = `Ole (a, b)]:	ifmt(sb, ind, "({} <= {})", a, b)
+	| [.e = `Oasn (a, b)]:	ifmt(sb, ind, "({} = {})", a, b)
+	| [.e = `Oaddeq (a, b)]:	ifmt(sb, ind, "({} += {})", a, b)
+	| [.e = `Osubeq (a, b)]:	ifmt(sb, ind, "({} -= {})", a, b)
+	| [.e = `Omuleq (a, b)]:	ifmt(sb, ind, "({} *= {})", a, b)
+	| [.e = `Odiveq (a, b)]:	ifmt(sb, ind, "({} /= {})", a, b)
+	| [.e = `Omodeq (a, b)]:	ifmt(sb, ind, "({} %= {})", a, b)
+	| [.e = `Oboreq (a, b)]:	ifmt(sb, ind, "({} |= {})", a, b)
+	| [.e = `Obandeq (a, b)]:	ifmt(sb, ind, "({} &= {})", a, b)
+	| [.e = `Obxoreq (a, b)]:	ifmt(sb, ind, "({} ^= {})", a, b)
+	| [.e = `Obsleq (a, b)]:	ifmt(sb, ind, "({} <<= {})", a, b)
+	| [.e = `Obsreq (a, b)]:	ifmt(sb, ind, "({} >>= {})", a, b)
+	| [.e = `Oidx (a, b)]:	ifmt(sb, ind, "{}[{}]", a, b)
+	| [.e = `Oslice (a, b, c)]:	ifmt(sb, ind, "{}[{} : {}]", a, b, c)
+	| [.e = `Omemb (a, memb)]:	ifmt(sb, ind, "{}.{}", a, memb)
+	| [.e = `Osize ty]:	ifmt(sb, ind, "sizeof({})", ty)
+	| [.e = `Ocast exp]:	ifmt(sb, ind, "{} castto({})", exp)
+	| [.e = `Oret exp]:	ifmt(sb, ind, "-> {}", exp)
+	| [.e = `Ojmp name]:	ifmt(sb, ind, "goto {}", name)
+	| [.e = `Obreak]:		ifmt(sb, ind, "break")
+	| [.e = `Ocontinue]:	ifmt(sb, ind, "continue")
+	| [.e = `Ovar name]:	ifmt(sb, ind, "{}", name)
+	| [.e = `Ogap]:		ifmt(sb, ind, "_")
+	| [.e = `Olit lit]:	litdump(sb, lit, ind)
+	| [.e = `Ocall (f, args)]:	ifmt(sb, ind, "{}({})", f, args)
 	| [.e = `Oucon (t, `std.Some v)]:
-		std.sbfmt(sb, "`{} {}", t, v)
+		ifmt(sb, ind, "`{} {}", t, v)
 	| [.e = `Oucon (t, `std.None)]:
-		std.sbfmt(sb, "{}", t)
+		ifmt(sb, ind, "{}", t)
 	| [.e = `Otup al]:
-		std.sbfmt(sb, "{}", al)
+		ifmt(sb, ind, "{}", al)
 	| [.e = `Ostruct ml]:
-		std.sbfmt(sb, "{}", ml)
+		ifmt(sb, ind, "{}", ml)
 	| [.e = `Oarr il]:
-		std.sbfmt(sb, "{}", il)
+		ifmt(sb, ind, "{}", il)
 	| [.e = `Oidxlen]:
-		std.sbfmt(sb, "$")
+		ifmt(sb, ind, "$")
 	;;
 }
 
@@ -244,6 +266,8 @@ const tydefdump = {sb, ty
 	| `Tyarray (sub, len):	std.sbfmt(sb, "{}[{}]", sub, len)
 	| `Tystruct dcls:	structdump(sb, dcls)
 	| `Tyunion dcls:	uniondump(sb, dcls)
+	| `Tytuple args:	parendump(sb, args, `std.None)
+	| `Tyfunc args:		parendump(sb, args[1:], `std.Some args[0])
 	/* user defined types */
 	| `Tygeneric (n, args, sub):	nameddump(sb, [.ns="", .name=n], args)
 	| `Tyname (n, args, sub):	nameddump(sb, n, args)
@@ -251,6 +275,29 @@ const tydefdump = {sb, ty
 	| `Typaram n:	std.sbfmt(sb, "@{}", n)
 	| `Tyvar id:	std.sbfmt(sb, "${}", id)
 	;;
+}
+
+const parendump = {sb, args, ret
+	var sep
+
+	sep = ""
+	std.sbputs(sb, "(")
+	for arg in args
+		std.sbputs(sb, sep)
+		tydefdump(sb, arg)
+		sep = ", "
+	;;
+	match ret
+	| `std.None:
+		/* nothing */
+	| `std.Some a:
+		if args.len > 0
+			std.sbputs(sb, " ")
+		;;
+		std.sbputs(sb, "-> ")
+		tydefdump(sb, a)
+	;;
+	std.sbputs(sb, ")")
 }
 
 const structdump = {sb, dcls
@@ -287,15 +334,56 @@ const nameddump = {sb, n : name, args
 	;;
 }
 
-const litdump = {sb, lit
+const litdump = {sb, lit, ind
 	match lit
-	| `Lint	(v, _, _):	std.sbfmt(sb, "{}", v)
-	| `Lflt	v:	std.sbfmt(sb, "{}", v)
-	| `Lchr	v:	std.sbfmt(sb, "{}", v)
-	| `Lstr	v:	std.sbfmt(sb, "{}", v)
-	| `Llbl	v:	std.sbfmt(sb, "{}", v)
-	| `Lbool v:	std.sbfmt(sb, ":{}", v)
-	| `Lvoid:	std.sbfmt(sb, "void")
+	| `Lint	(v, _, _):	ifmt(sb, ind, "{}", v)
+	| `Lflt	v:	ifmt(sb, ind, "{}", v)
+	| `Lchr	v:	ifmt(sb, ind, "{}", v)
+	| `Lstr	v:	ifmt(sb, ind, "{}", v)
+	| `Llbl	v:	ifmt(sb, ind, "{}", v)
+	| `Lbool v:	ifmt(sb, ind, "{}", v)
+	| `Lfunc v:	fndump(sb, v, ind)
+	| `Lvoid:	ifmt(sb, ind, "void")
 	;;
 }
 
+const fndump = {sb, fn, ind
+	ifmt(sb, ind, "func {{\n")
+	ifmt(sb, ind + 1, "loc: {}\n", fn.loc)
+	ifmt(sb, ind + 1, "type: {}\n", fn.ty)
+	ifmt(sb, ind + 1, "args: [\n")
+	for a in fn.args
+		dcldump(sb, a, ind + 2)
+	;;
+	ifmt(sb, ind + 1, "]\n")
+	stabdump(sb, fn.stab, ind + 1)
+	blkdump(sb, fn.body, ind + 1, false)
+	ifmt(sb, ind, "}}\n")
+}
+
+const blkdump : (sb : std.strbuf#, blk : block#, ind : int, show : bool -> void) = {sb, blk, ind, showstab
+	ifmt(sb, ind, "block {{\n")
+	if showstab
+		stabdump(sb, blk.stab, ind + 1)
+	;;
+	for s in blk.stmts
+		stmtdump(sb, s, ind + 1)
+	;;
+	ifmt(sb, ind, "}}\n")
+}
+
+const stmtdump = {sb, stmt, ind
+	match stmt
+	| &(`Nexpr s):	exprdump(sb, s, ind)
+	| &(`Nlit s):	litdump(sb, s, ind)
+	| &(`Nloop s):	std.fatal("loop not yet dumped\n")
+	| &(`Niter s):	std.fatal("iter not yet dumped\n")
+	| &(`Nif s):	std.fatal("if not yet implemented\n")
+	| &(`Nmatch s):	std.fatal("match not yet implemented\n")
+	| &(`Ncase s):	std.fatal("case not yet implemented\n")
+	| &(`Ndcl s):	std.fatal("dcl not yet implemented\n")
+	| &(`Nfunc s):	std.fatal("func not yet implemented\n")
+	| &(`Ntrait s):	std.fatal("trait not yet implemented\n")
+	| &(`Nimpl s):	std.fatal("impl not yet implemented\n")
+	;;
+}
