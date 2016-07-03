@@ -681,7 +681,7 @@ const funcexpr = {p, loc
 	optendlns(p)
 	match toknext(p)
 	| (l, `Tcbrace):	/* we're ok */
-	| (l, tokbad):	err(l, "expected '}' at end of function, got {}\n", tokbad)
+	| (l, tokbad):	err(l, "expected '}}' at end of function, got {}\n", tokbad)
 	;;
 
 	fn = mkfunc(loc, st, ty, args, blk)
