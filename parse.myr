@@ -667,7 +667,7 @@ const funcexpr = {p, loc
 	args = [][:]
 	st = mkstab(`std.Some p.curstab)
 	pushstab(p, st)
-	match toknext(p)
+	match tokpeek(p)
 	| (l, `Tident id):	err(l, "don't yet support func args\n")
 	| (l, `Tendln):	ty = mkty(loc, `Tyfunc std.sldup([mktyvar(loc)][:]))	/* (-> $t) */
 	| (l, tokbad):	err(l, "expected function arguments near {}\n", tokbad)
@@ -722,6 +722,7 @@ const blockbody = {p, st
 
 	stmts = [][:]
 	while true
+		optendlns(p)
 		match stmt(p)
 		| `std.Some s:	std.slpush(&stmts, s)
 		| `std.None:	break
@@ -831,9 +832,8 @@ const tystruct = {p, loc
 		| `std.None:	break
 		;;
 	;;
-	std.put("..erm\n")
 
-	// optendlns(p)
+	optendlns(p)
 	match toknext(p)
 	| (l, `Tendblk):	/* we're ok */
 	| (l, tokbad):	err(l, "expected ';;' after struct decls, got {}\n", tokbad)

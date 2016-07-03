@@ -101,7 +101,6 @@ const tokread = {ts
 		takec(ts)
 		ts.loc.line++
 		ts.loc.col = 1
-		std.put("endln...\n")
 		-> (loc, `Tendln)
 	elif c == '\''
 		-> (loc, chrlit(ts))
@@ -438,9 +437,7 @@ const oper = {ts
 			t = `Tcolon;
 		;;
 	| ';':
-		std.put("endln-semi\n")
 		if matchc(ts, ';')
-			std.put("endln to block\n")
 			t = `Tendblk;
 		else
 			t = `Tendln;
