@@ -629,7 +629,7 @@ const atomicexpr = {p
 	| (l, `Tboollit b):	e = `std.Some mkexpr(l, `Olit `Lbool b)
 	| (l, `Tvoidlit):	e = `std.Some mkexpr(l, `Olit `Lvoid)
 	| (l, `Tobrace):	e = `std.Some funcexpr(p, l)
-	| (l, `Tsizeof):	e = sizeofexpr(p, l)
+	| (l, `Tsizeof):	e = `std.Some sizeofexpr(p, l)
 	| _:
 		tokunget(p)
 		e = `std.None
@@ -639,7 +639,7 @@ const atomicexpr = {p
 }
 
 const sizeofexpr = {p, loc
-	var e
+	var ty
 
 	match toknext(p)
 	| (_, `Toparen):	/* ok */
@@ -647,7 +647,7 @@ const sizeofexpr = {p, loc
 	;;
 
 	match typ(p)
-	| `std.Some ty:	e = mkexpr(loc, `Osize ty)
+	| `std.Some t:	ty = t
 	| `std.None:	err(p.loc, "expected type in sizeof, got {}\n", tokpeekt(p))
 	;;
 
@@ -656,7 +656,7 @@ const sizeofexpr = {p, loc
 	| (l, tokbad):	err(l, "expected '(' after sizeof, got {}\n", tokbad)
 	;;
 
-	-> `std.Some e
+	-> mkexpr(loc, `Osize ty)
 }
 
 const funcexpr = {p, loc
