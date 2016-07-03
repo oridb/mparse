@@ -104,7 +104,6 @@ const tydefn = {p
 		err(l, "expected = after type, got {}\n", tokbad)
 	;;
 
-
 	match ty
 	| `std.Some t:	puttype(p.file.globls, [.ns = p.curns, .name=name], t)
 	| `std.None:	puttypefwd(p.file.globls, [.ns=p.curns, .name=name], loc)
@@ -159,6 +158,37 @@ const vardcl = {p, isglobl, vis
 	-> true
 }
 
+const dclattrs = {p, dcl
+	var hadattr
+
+	hadattr = false
+	while true
+		match tokpeek(p)
+		| (_, `Tpkglocal):	dcl.ispkglocal = true
+		| (_, `Textern):	dcl.isextern = true
+		| (_, `Tnoret):		dcl.isnoret = true
+		| _:	break
+		;;
+		toknext(p)
+		hadattr = true
+	;;
+	-> hadattr
+}
+
+const dcltag = {p, dcl
+	/* attributes (const | var) */
+	match tokpeek(p)
+	| (_, `Tvar):	dcl.isconst = false
+	| (_, `Tconst):	dcl.isconst = true
+	| (_, `Tgeneric):	
+		dcl.isconst = true
+		dcl.isgeneric = true
+	| (l, tokbad):
+		-> false
+	;;
+	toknext(p)
+	-> true
+}
 
 const dclname = {p, dcl : dcl#
 	/* attributes (const | var) name */
@@ -662,38 +692,6 @@ const blkbody = {p, st
 	-> `std.None
 }
 
-const dclattrs = {p, dcl
-	var hadattr
-
-	hadattr = false
-	while true
-		match tokpeek(p)
-		| (_, `Tpkglocal):	dcl.ispkglocal = true
-		| (_, `Textern):	dcl.isextern = true
-		| (_, `Tnoret):		dcl.isnoret = true
-		| _:	break
-		;;
-		toknext(p)
-		hadattr = true
-	;;
-	-> hadattr
-}
-
-const dcltag = {p, dcl
-	/* attributes (const | var) */
-	match tokpeek(p)
-	| (_, `Tvar):	dcl.isconst = false
-	| (_, `Tconst):	dcl.isconst = true
-	| (_, `Tgeneric):	
-		dcl.isconst = true
-		dcl.isgeneric = true
-	| (l, tokbad):
-		-> false
-	;;
-	toknext(p)
-	-> true
-}
-
 const name = {p -> std.option(name)
 	var ns, n
 
@@ -722,9 +720,9 @@ const typ = {p
 	var ty
 
 	match toknext(p)
-	| (l, `Tstruct):	ty = tystruct(p)
-	| (l, `Tunion):		ty = tyunion(p)
-	| (l, `Toparen):	ty = typaren(p)
+	| (l, `Tstruct):	ty = tystruct(p, l)
+	| (l, `Tunion):		ty = tyunion(p, l)
+	| (l, `Toparen):	ty = typaren(p, l)
 	| (l, `Tellipsis):	ty = mkty(l, `Tyvalist)
 	| (l, `Ttyparam n):	ty = mkty(l, `Typaram n)
 	| (l, `Tvoidlit):	ty = mkty(l, `Tyvoid)
@@ -739,20 +737,63 @@ const typ = {p
 	-> `std.Some tysuffixed(p, ty)
 }
 
-const tystruct = {p
-	-> std.alloc()
+const tystruct = {p, loc
+	var dcls
+
+	/* 'struct' already consumed */
+	dcls = [][:]
+	while true
+		endlns(p)
+		match dclcore(p)
+		| `std.Some d:	std.slpush(&dcls, d)
+		| `std.None:	break
+		;;
+	;;
+	std.put("..erm\n")
+
+	// optendlns(p)
+	match toknext(p)
+	| (l, `Tendblk):	/* we're ok */
+	| (l, tokbad):	err(l, "expected ';;' after struct decls, got {}\n", tokbad)
+	;;
+	-> mkty(loc, `Tystruct dcls)
 }
 
-const typaren = {p
+const dclcore = {p
+	var dcl
+	var nam
+
+	match toknext(p)
+	| (l, `Tident n):
+		nam = n
+	| (l, _):
+		tokunget(p)
+		-> `std.None
+	;;
+
+	/* attributes */
+	dcl = std.mk([
+		.id = p.file.dcls.len,
+		.vis = `Visintern,
+		.init = `std.None,
+		.tr = `std.None,
+		.isglobl = false,
+		.name = [.ns="", .name=nam]
+	])
+	dcltype(p, dcl)
+	-> `std.Some dcl
+}
+
+const typaren = {p, loc
 	match tokpeek(p)
-	| (loc, `Tident n):
+	| (_, `Tident n):
 		match name(p)
 		| `std.None:	std.die("impossible: failed name after ident\n")
 		| `std.Some nam:
 			match tokpeek(p)
-			| (l, `Tcolon):	-> functype(p, l, `std.Some nam)
-			| (l, `Tret):	-> functype(p, l, `std.Some nam)
-			| (l, _):	-> tupletype(p, l, `std.Some nam)
+			| (l, `Tcolon):	-> functype(p, loc, `std.Some nam)
+			| (l, `Tret):	-> functype(p, loc, `std.Some nam)
+			| (l, _):	-> tupletype(p, loc, `std.Some nam)
 			;;
 		;;
 	| (l, `Tret):
@@ -846,8 +887,7 @@ const tupletype = {p, loc, firstname
 	-> mkty(loc, `Tytuple args)
 }
 
-
-const tyunion = {p
+const tyunion = {p, loc
 	var u, elts, loc
 	var tag, tagloc, ty
 
@@ -880,7 +920,7 @@ const tyunion = {p
 
 	;;
 
-	u = mkty(p.loc, `Tyunion elts)
+	u = mkty(loc, `Tyunion elts)
 	for e in elts
 		e.uty = u
 	;;

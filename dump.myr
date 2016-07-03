@@ -16,6 +16,7 @@ const __init__ = {
 	var lit : lit
 	var fn : func
 	var blk : block
+	var loc : srcloc
 
 	std.fmtinstall(std.typeof(&f), fmtfile, [][:])
 	std.fmtinstall(std.typeof(&d), fmtdcl, [][:])
@@ -26,6 +27,7 @@ const __init__ = {
 	std.fmtinstall(std.typeof(&fn), fmtfn, [][:])
 	std.fmtinstall(std.typeof(&blk), fmtblk, [][:])
 	std.fmtinstall(std.typeof(lit), fmtlit, [][:])
+	std.fmtinstall(std.typeof(loc), fmtloc, [][:])
 }
 
 const fmtfile = {sb, ap, opts
@@ -85,6 +87,13 @@ const fmtblk = {sb, ap, opts
 
 	blk = std.vanext(ap)
 	blkdump(sb, blk, 0, true)
+}
+
+const fmtloc = {sb, ap, opts
+	var loc : srcloc
+
+	loc = std.vanext(ap)
+	std.sbfmt(sb, "{}:{},{}:", loc.file, loc.line, loc.col)
 }
 
 const filedump = {sb, f, ind
