@@ -1,7 +1,0 @@
-use std
-
-use "types"
-
-pkg parse =
-;;
-

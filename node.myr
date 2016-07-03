@@ -1,7 +1,6 @@
 use std
 
 use "types"
-use "type"
 
 pkg parse =
 	/* expr nodes */
