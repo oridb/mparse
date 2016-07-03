@@ -725,8 +725,10 @@ const typ = {p
 	match toknext(p)
 	| (l, `Tstruct):	ty = tystruct(p)
 	| (l, `Tunion):		ty = tyunion(p)
+	| (l, `Toparen):	ty = typaren(p)
 	| (l, `Tellipsis):	ty = mkty(l, `Tyvalist)
 	| (l, `Ttyparam n):	ty = mkty(l, `Typaram n)
+	| (l, `Tvoidlit):	ty = mkty(l, `Tyvoid)
 	| (l, `Tident id):
 		tokunget(p)
 		ty = tyname(p)
@@ -741,6 +743,110 @@ const typ = {p
 const tystruct = {p
 	-> std.alloc()
 }
+
+const typaren = {p
+	match tokpeek(p)
+	| (loc, `Tident n):
+		match name(p)
+		| `std.None:	std.die("impossible: failed name after ident\n")
+		| `std.Some nam:
+			match tokpeek(p)
+			| (l, `Tcolon):	-> functype(p, l, `std.Some nam)
+			| (l, `Tret):	-> functype(p, l, `std.Some nam)
+			| (l, _):	-> tupletype(p, l, `std.Some nam)
+			;;
+		;;
+	| (l, `Tret):
+		-> functype(p, l, `std.None)
+	| (l, tokbad):
+		err(l, "expected name or '->' after '(' in type\n")
+	;;
+}
+
+const functype = {p, loc, firstname
+	var nam, args
+
+	args = [][:]
+	match firstname
+	| `std.None:
+		/* no names possible */
+		match toknext(p)
+		| (l, `Tret):	goto parseret
+		| (l, tokbad):	err(l, "expected -> in function type, got {}\n", tokbad)
+		;;
+	| `std.Some n:
+		nam = n
+		goto parseargs
+	;;
+	while true
+		match name(p)
+		| `std.Some n:	nam = n
+		| `std.None:	break
+		;;
+:parseargs
+		match toknext(p)
+		| (l, `Tret):	break
+		| (l, `Tcolon):
+			match typ(p)
+			| `std.Some ty:	std.slpush(&args, ty)
+			| `std.None:	err(l, "expected type after ':' in arg declaration\n")
+			;;
+		| (l, tokbad):
+			err(l, "expected ':', '->' or ',' after arg name, got {}\n", tokbad)
+		;;
+
+		match toknext(p)
+		| (l, `Tcomma):	/* nothing */
+		| (l, `Tret):	break
+		| (l, tokbad):	err(l, "expected ',' in function arg list, got {}\n", tokbad)
+		;;
+	;;
+
+:parseret
+	match typ(p)
+	| `std.Some ty:	std.slput(&args, 0, ty)
+	| `std.None:	err(p.loc, "expected return type after '->', got {}\n", tokpeek(p))
+	;;
+
+	match toknext(p)
+	| (l, `Tcparen):	/* everything is ok */
+	| (l, tokbad):	err(l, "expected ')' after function type, got '{}'\n", tokbad)
+	;;
+
+	-> mkty(loc, `Tyfunc args)
+}
+
+const tupletype = {p, loc, firstname
+	var args
+
+	args = [][:]
+	match firstname
+	| `std.None:	/* everything is ok */
+	| `std.Some n:
+		std.slpush(&args, typaramname(p, n))
+		match toknext(p)
+		| (l, `Tcomma):	/* nothing */
+		| (l, `Tcparen):	/* nothing */
+		| (l, tokbad):	err(l, "expected ',' in tuple type list, got {}\n", tokbad)
+		;;
+	;;
+
+	while true
+		std.put("tok: {}\n", tokpeekt(p))
+		match typ(p)
+		| `std.Some ty:	std.slpush(&args, ty)
+		| `std.None:	break
+		;;
+		match toknext(p)
+		| (l, `Tcomma):	/* nothing */
+		| (l, `Tcparen):	break
+		| (l, tokbad):	err(l, "expected ',' in tuple type list, got {}\n", tokbad)
+		;;
+	;;
+
+	-> mkty(loc, `Tytuple args)
+}
+
 
 const tyunion = {p
 	var u, elts, loc
@@ -783,12 +889,14 @@ const tyunion = {p
 }
 
 const tyname = {p
-	var nam, params
-
 	match name(p)
-	| `std.Some n:	nam = n
+	| `std.Some n:	-> typaramname(p, n)
 	| `std.None:	std.die("we came hear after peeking an ident\n")
 	;;
+}
+
+const typaramname = {p, nam
+	var params
 
 	params = [][:]
 	match tokpeek(p)
