@@ -12,6 +12,7 @@ pkg parse =
 	const tsfile	: (p : parser# -> file#)
 ;;
 
+
 const tsfile = {p
 	var f
 	var t : tok
@@ -45,7 +46,7 @@ const tsfile = {p
 		| (l, `Tendln):	endlns(p)
 		| (l, tok):	
 			if !vardcl(p, true, vis)
-				err(l, "invalid top level item near {}", tok)
+				err(l, "invalid top level item near {}\n", tok)
 			;;
 		;;
 	;;
@@ -258,7 +259,7 @@ const exprcore = {p, lhs, minprec
 
 		match unionexpr(p)
 		| `std.Some e:	rhs = e
-		| `std.None:	err(p.loc, "expected primary expression after {}, near {}", op, tokpeekt(p))
+		| `std.None:	err(p.loc, "expected primary expression after {}, near {}\n", op, tokpeekt(p))
 		;;
 
 		(peekloc, peek) = tokpeek(p)
@@ -292,7 +293,7 @@ const exprcore = {p, lhs, minprec
 		| `Tlt:	lhs = mkexpr(oploc, `Olt (lhs, rhs))
 		| `Tle:	lhs = mkexpr(oploc, `Ole (lhs, rhs))
 		| `Tne:	lhs = mkexpr(oploc, `One (lhs, rhs))
-		| _:	std.die("broken parser")
+		| _:	std.die("broken parser\n")
 		;;
 	;;
 	-> lhs
@@ -402,7 +403,7 @@ const binexprcore = {p, lhs, minprec
 
 		match prefixexpr(p)
 		| `std.Some e:	rhs = e
-		| `std.None:	err(p.loc, "expected primary expression after {}, near {}", op, tokpeekt(p))
+		| `std.None:	err(p.loc, "expected primary expression after {}, near {}\n", op, tokpeekt(p))
 		;;
 
 		(peekloc, peek) = tokpeek(p)
@@ -431,7 +432,7 @@ const binexprcore = {p, lhs, minprec
 		| `Tbsl:	lhs = mkexpr(oploc, `Obsl (lhs, rhs))
 		| `Tbsr:	lhs = mkexpr(oploc, `Obsr (lhs, rhs))
 		/* all others */
-		| _:	std.die("broken parser")
+		| _:	std.die("broken parser\n")
 		;;
 	;;
 	-> lhs
@@ -673,7 +674,7 @@ const funcexpr = {p, loc
 	| (l, tokbad):	err(l, "expected function arguments near {}\n", tokbad)
 	;;
 
-	blk = blockbody(p, st)
+	blk = blkbody(p, st)
 
 	optendlns(p)
 	match toknext(p)
@@ -715,38 +716,192 @@ const funcargs = {p
 }
 
 const ifstmt = {p
+	var cond, blk, st
+	var tok
+
+	match tokpeek(p)
+	| (l, `Tif):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
+
+	tok = "if"
+	while true
+		match expr(p)
+		| `std.Some e:	cond = e
+		| `std.None:	err(p.loc, "expected expression after '{}'\n", tok)
+		;;
+
+		st = mkstab(`std.Some p.curstab)
+		pushstab(p, st)
+		blk = blkbody(p, st)
+		popstab(p)
+
+		match tokpeek(p)
+		| (l, `Telif):
+			tok = "elif"
+			toknext(p)
+		| (l, `Telse):
+			toknext(p)
+			st = mkstab(`std.Some p.curstab)
+			pushstab(p, st)
+			blk = blkbody(p, st)
+			popstab(p)
+			break
+		;;
+	;;
+
+	endblk(p, "if statement")
 	-> `std.None
 }
 
 const forstmt = {p
-	-> `std.None
+	var loc, asnloc
+	var init, st
+
+	match tokpeek(p)
+	| (l, `Tfor):	(loc, _) = toknext(p)
+	| (l, _):	-> `std.None
+	;;
+
+	st = mkstab(`std.Some p.curstab)
+	match tokpeek(p)
+	| (l, `Tvar):
+		toknext(p)
+
+		match dclcore(p)
+		| `std.Some d:	putdcl(st, d.name, d)
+		| `std.None:	err(l, "expected declaration after 'var'\n")
+		;;
+
+		match toknext(p)
+		| (al, `Tasn):	asnloc = al
+		| (al, tokbad):	err(al, "expected '=' in iter declaration, got {}\n", tokbad)
+		;;
+
+		match expr(p)
+		| `std.Some e:	init = e
+		| `std.None:	err(asnloc, "expected expression after '='\n")
+		;;
+	| (l, _):
+		match expr(p)
+		| `std.Some e:	init = e
+		| `std.None:	init = mkexpr(l, `Onop)
+		;;
+	;;
+	
+	match toknext(p)
+	| (l, `Tendln):	-> `std.Some `Nloop forsteploop(p, loc, init, st)
+	| (l, `Tin):	-> `std.Some `Niter foriterloop(p, loc, init, st)
+	| (l, tokbad):	err(l, "invalid separator {} in for loop\n", tokbad)
+	;;
+}
+
+const forsteploop = {p, loc, init, st
+	var cond, step
+	var blk
+
+	std.put("forsteploop\n")
+	match toknext(p)
+	| (l, `Tendln):	/* ok */
+	| (l, tokbad):	err(l, "expected ';' after for init\n")
+	;;
+	match expr(p)
+	| `std.Some e:	cond = e
+	| `std.None:	cond = mkexpr(p.loc, `Onop)
+	;;
+	match toknext(p)
+	| (l, `Tendln):	/* ok */
+	| (l, tokbad):	err(l, "expected ';' after for condition\n")
+	;;
+	match expr(p)
+	| `std.Some e:	step = e
+	| `std.None:	step = mkexpr(p.loc, `Onop)
+	;;
+	match toknext(p)
+	| (l, `Tendln):	/* ok */
+	| (l, tokbad):	err(l, "expected ';' after for step\n")
+	;;
+
+	pushstab(p, st)
+	blk = blkbody(p, st)
+	popstab(p)
+	endblk(p, "for loop")
+
+	-> mkfor(loc, init, cond, step, blk)
+}
+
+
+const foriterloop = {p, loc, pat, st
+	var iter, blk
+
+	std.put("foriterloop\n")
+	match expr(p)
+	| `std.Some e:	iter = e
+	| `std.None:	err(p.loc, "expected iterator expression after 'in'\n")
+	;;
+
+	match toknext(p)
+	| (l, `Tendln):	/* ok */
+	| (l, tokbad):	err(l, "expected ';' after iterator expression\n")
+	;;
+
+	pushstab(p, st)
+	blk = blkbody(p, st)
+	popstab(p)
+	endblk(p, "for loop")
+
+	-> mkiter(loc, pat, iter, blk)
 }
 
 const whilestmt = {p
+	match tokpeek(p)
+	| (l, `Twhile):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
 	-> `std.None
 }
 
 const matchstmt = {p
+	match tokpeek(p)
+	| (l, `Tmatch):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
 	-> `std.None
 }
 
 const dclstmt = {p
+	match tokpeek(p)
+	| (l, `Tvar):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
 	-> `std.None
 }
 
 const typestmt = {p
+	match tokpeek(p)
+	| (l, `Ttype):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
 	-> `std.None
 }
 
 const traitstmt = {p
+	match tokpeek(p)
+	| (l, `Ttrait):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
 	-> `std.None
 }
 
 const implstmt = {p
+	match tokpeek(p)
+	| (l, `Timpl):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
 	-> `std.None
 }
 
-const blockbody = {p, st
+const blkbody = {p, st
 	var stmts
 
 	stmts = [][:]
@@ -769,11 +924,11 @@ const stmt = {p
 	| `std.None:	/* nothing */
 	;;
 	match forstmt(p)
-	| `std.Some e:	-> `std.Some mkstmt(loc, `Nloop e)
+	| `std.Some l:	-> `std.Some mkstmt(loc, l)
 	| `std.None:	/* nothing */
 	;;
 	match whilestmt(p)
-	| `std.Some e:	-> `std.Some mkstmt(loc, `Niter e)
+	| `std.Some l:	-> `std.Some mkstmt(loc, `Nloop l)
 	| `std.None:	/* nothing */
 	;;
 	match ifstmt(p)
@@ -863,10 +1018,7 @@ const tystruct = {p, loc
 	;;
 
 	optendlns(p)
-	match toknext(p)
-	| (l, `Tendblk):	/* we're ok */
-	| (l, tokbad):	err(l, "expected ';;' after struct decls, got {}\n", tokbad)
-	;;
+	endblk(p, "struct definition")
 	-> mkty(loc, `Tystruct dcls)
 }
 
@@ -1104,4 +1256,12 @@ const endlns = {p
 	| (l, tok):	err(l, "expected \\n, got {}\n", tok)
 	;;
 	-> true
+}
+
+const endblk = {p, stmt
+	optendlns(p)
+	match toknext(p)
+	| (l, `Tendblk): /* ok */
+	| (l, tokbad):	err(l, "expected ;; after {}, got {}\n", stmt, tokbad)
+	;;
 }

@@ -141,6 +141,7 @@ const dcldump = {sb, dcl, ind
 
 const exprdump = {sb, e, ind
 	match e#
+	| [.e = `Onop]:	ifmt(sb, ind, "<nop>")
 	| [.e = `Oadd (a, b)]:	ifmt(sb, ind, "({} + {})", a, b)
 	| [.e = `Osub (a, b)]:	ifmt(sb, ind, "({} - {})", a, b)
 	| [.e = `Omul (a, b)]:	ifmt(sb, ind, "({} * {})", a, b)
@@ -370,7 +371,7 @@ const fndump = {sb, fn, ind
 	ifmt(sb, ind, "}}\n")
 }
 
-const blkdump : (sb : std.strbuf#, blk : block#, ind : int, show : bool -> void) = {sb, blk, ind, showstab
+const blkdump = {sb, blk, ind, showstab
 	ifmt(sb, ind, "block {{\n")
 	if showstab
 		stabdump(sb, blk.stab, ind + 1)
@@ -385,12 +386,29 @@ const blkdump : (sb : std.strbuf#, blk : block#, ind : int, show : bool -> void)
 const stmtdump = {sb, stmt, ind
 	match stmt
 	| &(`Nexpr s):	exprdump(sb, s, ind)
-	| &(`Nloop s):	std.fatal("loop not yet dumped\n")
-	| &(`Niter s):	std.fatal("iter not yet dumped\n")
+	| &(`Nloop s):	loopdump(sb, s, ind)
+	| &(`Niter s):	iterdump(sb, s, ind)
 	| &(`Nif s):	std.fatal("if not yet implemented\n")
 	| &(`Nmatch s):	std.fatal("match not yet implemented\n")
 	| &(`Ndcl s):	std.fatal("dcl not yet implemented\n")
 	| &(`Ntrait s):	std.fatal("trait not yet implemented\n")
 	| &(`Nimpl s):	std.fatal("impl not yet implemented\n")
 	;;
+}
+
+const loopdump = {sb, s, ind
+	ifmt(sb, ind, "Loop\n")
+	ifmt(sb, ind + 1, "init:\t{}\n", s.init)
+	ifmt(sb, ind + 1, "cond:\t{}\n", s.cond)
+	ifmt(sb, ind + 1, "step:\t{}\n", s.step)
+	blkdump(sb, s.body, ind + 1, true)
+	std.sbputs(sb, "\n")
+}
+
+const iterdump = {sb, s, ind
+	ifmt(sb, ind, "Loop\n")
+	ifmt(sb, ind + 1, "pat:\t{}\n", s.pat)
+	ifmt(sb, ind + 1, "iter:\t{}\n", s.iter)
+	blkdump(sb, s.body, ind + 1, true)
+	std.sbputs(sb, "\n")
 }

@@ -125,6 +125,7 @@ pkg parse =
 	;;
 
 	type exprop = union
+		`Onop
 		`Oadd	(expr#, expr#)
 		`Osub	(expr#, expr#)
 		`Omul	(expr#, expr#)
@@ -210,12 +211,11 @@ pkg parse =
 		cond	: expr#
 		step	: expr#
 		body	: block#
-		scope	: stab#
 	;;
 
 	type iterstmt = struct
-		elt	: expr#
-		seq	: expr#
+		pat	: expr#
+		iter	: expr#
 		body	: block#
 	;;
 
