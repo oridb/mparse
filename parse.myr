@@ -147,7 +147,6 @@ const vardcls = {p, isglobl, vis
 	toknext(p)
 
 	while true
-		std.put("dcl\n")
 		dcl = std.mk([
 			.loc = p.loc,
 			.id = p.file.dcls.len,
