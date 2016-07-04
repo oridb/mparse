@@ -233,12 +233,12 @@ pkg parse =
 
 	type matchstmt = struct
 		val	: expr#
-		matches	: matchcase#[:]
+		cases	: matchcase[:]
 	;;
 
 	type matchcase = struct
-		expr	: expr#
-		blk	: block#
+		pat	: expr#
+		act	: block#
 	;;
 
 	type lit = union

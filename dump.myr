@@ -383,7 +383,7 @@ const stmtdump = {sb, stmt, ind
 	| &(`Nloop s):	loopdump(sb, s, ind)
 	| &(`Niter s):	iterdump(sb, s, ind)
 	| &(`Nif s):	ifdump(sb, s, ind)
-	| &(`Nmatch s):	std.fatal("match not yet implemented\n")
+	| &(`Nmatch s):	matchdump(sb, s, ind)
 	| &(`Ndcl s):	dcldump(sb, s, ind)
 	| &(`Ntrait s):	std.fatal("trait not yet implemented\n")
 	| &(`Nimpl s):	std.fatal("impl not yet implemented\n")
@@ -417,3 +417,13 @@ const ifdump = {sb, s, ind
 	std.sbputs(sb, "\n")
 }
 
+const matchdump = {sb, s, ind
+	ifmt(sb, ind, "Match\n")
+	ifmt(sb, ind + 1, "val: {}\n", s.val)
+	for c in s.cases
+		ifmt(sb, ind + 1, "pat: {}\n", c.pat)
+		ifmt(sb, ind + 1, "action:\n")
+		blkdump(sb, c.act, ind + 2, true)
+	;;
+	std.sbputs(sb, "\n")
+}

@@ -11,6 +11,7 @@ pkg parse =
 	const mkstmt	: (l : srcloc, stmt : stmt -> stmt#)
 	const mkloop	: (l : srcloc, init : expr#, cond : expr#, step : expr#, body : block# -> loopstmt#)
 	const mkiter	: (l : srcloc, pat : expr#,  seq : expr#, bodk : block# -> iterstmt#)
+	const mkmatch	: (l : srcloc, val : expr#, cases : matchcase[:] -> matchstmt#)
 
 	/* type nodes */
 	const mktyvar	: (l : srcloc -> tydef#)
@@ -46,16 +47,16 @@ const mkfunc = {l, st, ty, args, body
 	])
 }
 
+const mkstmt = {l, st
+	-> std.mk(st)
+}
+
 const mkif = {l, cond, iftrue, iffalse
 	-> std.mk([
 		.cond=cond,
 		.iftrue=iftrue,
 		.iffalse=iffalse,
 	])
-}
-
-const mkstmt = {l, st
-	-> std.mk(st)
 }
 
 const mkloop = {l, init, cond, step, blk
@@ -72,6 +73,13 @@ const mkiter = {l, pat, iter, blk
 		.pat=pat,
 		.iter=iter,
 		.body=blk
+	])
+}
+
+const mkmatch = {l, val, cases
+	-> std.mk([
+		.val=val,
+		.cases=cases,
 	])
 }
 

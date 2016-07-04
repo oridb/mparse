@@ -1039,11 +1039,58 @@ const whilestmt = {p
 }
 
 const matchstmt = {p
+	var loc, val, cases
+
 	match tokpeek(p)
-	| (l, `Tmatch):	toknext(p)
+	| (l, `Tmatch):	(loc, _) = toknext(p)
 	| (l, _):	-> `std.None
 	;;
-	-> `std.None
+
+	match expr(p)
+	| `std.Some e:	val = e
+	| `std.None:	err(p.loc, "expected expression after match, got {}\n", tokpeekt(p))
+	;;
+	match toknext(p)
+	| (l, `Tendln):	/* nothing */
+	| (l, tokbad):	err(l, "expected ';' after match expression\n")
+	;;
+
+	cases = [][:]
+	while true
+		match matchcase(p)
+		| `std.Some c:	std.slpush(&cases, c)
+		| `std.None:	break
+		;;
+	;;
+	endblk(p, "match")
+
+	-> `std.Some mkmatch(loc, val, cases)
+}
+
+const matchcase = {p
+	var pat, blk, st
+
+	match tokpeek(p)
+	| (l, `Tbor):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
+
+	match expr(p)
+	| `std.Some e:	pat = e
+	| `std.None:	err(p.loc, "expected pattern in match case, got {}\n", tokpeekt(p))
+	;;
+
+	match toknext(p)
+	| (l, `Tcolon):	/* ok */
+	| (l, tokbad):	err(l, "expected ':' after pattern, got {}\n", tokbad)
+	;;
+
+	st = mkstab(`std.Some p.curstab)
+	pushstab(p, st)
+	blk = blkbody(p, st)
+	popstab(p)
+
+	-> `std.Some [.pat=pat, .act=blk]
 }
 
 const typestmt = {p
