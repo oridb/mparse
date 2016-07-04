@@ -388,7 +388,7 @@ const stmtdump = {sb, stmt, ind
 	| &(`Nexpr s):	exprdump(sb, s, ind)
 	| &(`Nloop s):	loopdump(sb, s, ind)
 	| &(`Niter s):	iterdump(sb, s, ind)
-	| &(`Nif s):	std.fatal("if not yet implemented\n")
+	| &(`Nif s):	ifdump(sb, s, ind)
 	| &(`Nmatch s):	std.fatal("match not yet implemented\n")
 	| &(`Ndcl s):	std.fatal("dcl not yet implemented\n")
 	| &(`Ntrait s):	std.fatal("trait not yet implemented\n")
@@ -410,5 +410,15 @@ const iterdump = {sb, s, ind
 	ifmt(sb, ind + 1, "pat:\t{}\n", s.pat)
 	ifmt(sb, ind + 1, "iter:\t{}\n", s.iter)
 	blkdump(sb, s.body, ind + 1, true)
+	std.sbputs(sb, "\n")
+}
+
+const ifdump = {sb, s, ind
+	ifmt(sb, ind, "If\n")
+	ifmt(sb, ind + 1, "cond:\t{}\n", s.cond)
+	ifmt(sb, ind + 1, "iftrue:\n")
+	blkdump(sb, s.iftrue, ind + 2, true)
+	ifmt(sb, ind + 1, "iffalse:\n")
+	blkdump(sb, s.iffalse, ind + 2, true)
 	std.sbputs(sb, "\n")
 }

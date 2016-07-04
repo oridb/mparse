@@ -6,9 +6,10 @@ pkg parse =
 	/* expr nodes */
 	const mkexpr	: (l : srcloc, e : exprop -> expr#)
 	const mkblk	: (l : srcloc, st : stab#, stmts : stmt#[:] -> block#)
+	const mkif	: (l : srcloc, cond : expr#, iftrue : block#, iffalse : block# -> ifstmt#)
 	const mkfunc	: (l : srcloc, st : stab#, ty : tydef#, args : dcl#[:], body : block# -> func#)
 	const mkstmt	: (l : srcloc, stmt : stmt -> stmt#)
-	const mkfor	: (l : srcloc, init : expr#, cond : expr#, step : expr#, body : block# -> loopstmt#)
+	const mkloop	: (l : srcloc, init : expr#, cond : expr#, step : expr#, body : block# -> loopstmt#)
 	const mkiter	: (l : srcloc, pat : expr#,  seq : expr#, bodk : block# -> iterstmt#)
 
 	/* type nodes */
@@ -45,11 +46,19 @@ const mkfunc = {l, st, ty, args, body
 	])
 }
 
+const mkif = {l, cond, iftrue, iffalse
+	-> std.mk([
+		.cond=cond,
+		.iftrue=iftrue,
+		.iffalse=iffalse,
+	])
+}
+
 const mkstmt = {l, st
 	-> std.mk(st)
 }
 
-const mkfor = {l, init, cond, step, blk
+const mkloop = {l, init, cond, step, blk
 	-> std.mk([
 		.init=init,
 		.cond=cond,

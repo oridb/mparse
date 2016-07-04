@@ -233,6 +233,20 @@ const dclinit = {p, dcl
 	-> false
 }
 
+const retexpr = {p
+	match tokpeek(p)
+	| (l, `Tret):
+		toknext(p)
+		match expr(p)
+		| `std.Some e:	-> `std.Some mkexpr(l, `Oret e)
+		| `std.None:	err(l, "expected expression after '->'\n")
+		;;
+	| (l, _):
+		-> expr(p)
+	;;
+}
+
+
 const expr = {p
 	match unionexpr(p)
 	| `std.Some e:	-> `std.Some exprcore(p, e, 0)
@@ -661,7 +675,7 @@ const sizeofexpr = {p, loc
 }
 
 const funcexpr = {p, loc
-	/* opening { already matched */
+	/* opening { already consumed */
 	var args, blk, st, ty
 	var fn
 
@@ -716,42 +730,52 @@ const funcargs = {p
 }
 
 const ifstmt = {p
-	var cond, blk, st
-	var tok
+	var st
+	match tokpeek(p)
+	| (l, `Tif):
+		toknext(p)
+		st = ifstmtbody(p, l, "if")
+		endblk(p, "if statement")
+		-> `std.Some st
+	| (l, _):
+		-> `std.None
+	;;
+}
+
+const ifstmtbody = {p, loc, tok
+	var cond, iftrue, iffalse
+	var el, ex, st
+	
+	match expr(p)
+	| `std.Some e:	cond = e
+	| `std.None:	err(p.loc, "expected expression after '{}'\n", tok)
+	;;
+	match toknext(p)
+	| (l, `Tendln):	/* ok */
+	| (l, tokbad):	err(l, "expected ';' after {} condition\n", tok)
+	;;
+
+	st = mkstab(`std.Some p.curstab)
+	pushstab(p, st)
+	iftrue = blkbody(p, st)
+	popstab(p)
 
 	match tokpeek(p)
-	| (l, `Tif):	toknext(p)
-	| (l, _):	-> `std.None
-	;;
-
-	tok = "if"
-	while true
-		match expr(p)
-		| `std.Some e:	cond = e
-		| `std.None:	err(p.loc, "expected expression after '{}'\n", tok)
-		;;
-
+	| (l, `Telif):
+		toknext(p)
+		el = mkstmt(l, `Nif ifstmtbody(p, l, "elif"))
+		iffalse = mkblk(l, p.curstab, std.sldup([el][:]))
+	| (l, `Telse):
+		toknext(p)
 		st = mkstab(`std.Some p.curstab)
 		pushstab(p, st)
-		blk = blkbody(p, st)
+		iffalse = blkbody(p, st)
 		popstab(p)
-
-		match tokpeek(p)
-		| (l, `Telif):
-			tok = "elif"
-			toknext(p)
-		| (l, `Telse):
-			toknext(p)
-			st = mkstab(`std.Some p.curstab)
-			pushstab(p, st)
-			blk = blkbody(p, st)
-			popstab(p)
-			break
-		;;
+	| (l, _):
+		ex = mkstmt(l, `Nexpr mkexpr(l, `Onop))
+		iffalse = mkblk(l, p.curstab, std.sldup([ex][:]))
 	;;
-
-	endblk(p, "if statement")
-	-> `std.None
+	-> mkif(loc, cond, iftrue, iffalse)
 }
 
 const forstmt = {p
@@ -827,7 +851,7 @@ const forsteploop = {p, loc, init, st
 	popstab(p)
 	endblk(p, "for loop")
 
-	-> mkfor(loc, init, cond, step, blk)
+	-> mkloop(loc, init, cond, step, blk)
 }
 
 
@@ -854,11 +878,30 @@ const foriterloop = {p, loc, pat, st
 }
 
 const whilestmt = {p
+	var cond, blk, st, loc
+
 	match tokpeek(p)
-	| (l, `Twhile):	toknext(p)
+	| (l, `Twhile):	(loc, _) = toknext(p)
 	| (l, _):	-> `std.None
 	;;
-	-> `std.None
+
+	match expr(p)
+	| `std.Some e:	cond = e
+	| `std.None:	err(p.loc, "expected expression in while condition\n")
+	;;
+
+	match toknext(p)
+	| (l, `Tendln):	/* ok */
+	| (l, tokbad):	err(l, "expected ';' after loop condition\n")
+	;;
+
+	st = mkstab(`std.Some p.curstab)
+	pushstab(p, st)
+	blk = blkbody(p, st)
+	popstab(p)
+	endblk(p, "while loop")
+
+	-> `std.Some mkloop(loc, mkexpr(loc, `Onop), cond, mkexpr(loc, `Onop), blk)
 }
 
 const matchstmt = {p
@@ -919,7 +962,7 @@ const stmt = {p
 	var loc
 
 	loc = p.loc
-	match expr(p)
+	match retexpr(p)
 	| `std.Some e:	-> `std.Some mkstmt(loc, `Nexpr e)
 	| `std.None:	/* nothing */
 	;;
