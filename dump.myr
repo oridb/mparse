@@ -193,18 +193,12 @@ const exprdump = {sb, e, ind
 	| [.e = `Ogap]:		ifmt(sb, ind, "_")
 	| [.e = `Olit lit]:	litdump(sb, lit, ind)
 	| [.e = `Ocall (f, args)]:	ifmt(sb, ind, "{}({})", f, args)
-	| [.e = `Oucon (t, `std.Some v)]:
-		ifmt(sb, ind, "`{} {}", t, v)
-	| [.e = `Oucon (t, `std.None)]:
-		ifmt(sb, ind, "{}", t)
-	| [.e = `Otup al]:
-		ifmt(sb, ind, "{}", al)
-	| [.e = `Ostruct ml]:
-		ifmt(sb, ind, "{}", ml)
-	| [.e = `Oarr il]:
-		ifmt(sb, ind, "{}", il)
-	| [.e = `Oidxlen]:
-		ifmt(sb, ind, "$")
+	| [.e = `Oucon (t, `std.Some v)]:	ifmt(sb, ind, "`{} {}", t, v)
+	| [.e = `Oucon (t, `std.None)]:	ifmt(sb, ind, "{}", t)
+	| [.e = `Otup al]:	ifmt(sb, ind, "{}", al)
+	| [.e = `Ostruct ml]:	ifmt(sb, ind, "{}", ml)
+	| [.e = `Oarr il]:	ifmt(sb, ind, "{}", il)
+	| [.e = `Oidxlen]:	ifmt(sb, ind, "$")
 	;;
 }
 

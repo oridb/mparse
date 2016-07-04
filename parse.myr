@@ -643,8 +643,10 @@ const atomicexpr = {p
 	| (l, `Tchrlit c):	e = `std.Some mkexpr(l, `Olit `Lchr c)
 	| (l, `Tboollit b):	e = `std.Some mkexpr(l, `Olit `Lbool b)
 	| (l, `Tvoidlit):	e = `std.Some mkexpr(l, `Olit `Lvoid)
-	| (l, `Tobrace):	e = `std.Some funcexpr(p, l)
 	| (l, `Tsizeof):	e = `std.Some sizeofexpr(p, l)
+	| (l, `Toparen):	e = `std.Some parenexpr(p, l)
+	| (l, `Tosqbrac):	e = `std.Some arrayexpr(p, l)
+	| (l, `Tobrace):	e = `std.Some funcexpr(p, l)
 	| _:
 		tokunget(p)
 		e = `std.None
@@ -672,6 +674,50 @@ const sizeofexpr = {p, loc
 	;;
 
 	-> mkexpr(loc, `Osize ty)
+}
+
+const parenexpr = {p, loc
+	var exprs, ret, istup
+	var loc
+	
+	/* opening ( already consumed */
+	istup = false
+	exprs = [][:]
+	while true
+		match expr(p)
+		| `std.Some e:	std.slpush(&exprs, e)
+		| `std.None:	break
+		;;
+
+		match tokpeek(p)
+		| (l, `Tcomma):	istup = true
+		| (l, _):	break
+		;;
+		toknext(p)
+	;;
+	match toknext(p)
+	| (l, `Tcparen): /* ok */
+	| (l, tokbad):	err(l, "expected ')' after '(...'\n")
+	;;
+
+	match (exprs.len, istup)
+	| (0, true):	err(loc, "expected at least one element in tuple\n")
+	| (0, false):	err(loc, "expected expression after '(', got {}\n", tokpeekt(p))
+	| _:	/* ok */
+	;;
+
+	if istup
+		ret = mkexpr(loc, `Otup exprs)
+	else
+		ret = exprs[0]
+		std.slfree(exprs)
+	;;
+	-> ret
+}
+
+const arrayexpr = {p, l
+	err(l, "array exprs not yet implemented\n")
+	-> mkexpr(l, `Oarr [][:])
 }
 
 const funcexpr = {p, loc
