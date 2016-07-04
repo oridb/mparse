@@ -180,7 +180,7 @@ pkg parse =
 		`Oucon	(name, std.option(expr#))
 		`Otup	expr#[:]
 		`Ostruct	(name, expr#)[:]
-		`Oarr	(expr#, expr#)[:]
+		`Oarr	(std.option(expr#), expr#)[:]
 		`Oidxlen
 	;;
 

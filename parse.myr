@@ -695,9 +695,10 @@ const parenexpr = {p, loc
 		;;
 		toknext(p)
 	;;
-	match toknext(p)
-	| (l, `Tcparen): /* ok */
-	| (l, tokbad):	err(l, "expected ')' after '(...'\n")
+	match (toknext(p), istup)
+	| ((l, `Tcparen), _): /* ok */
+	| ((l, tokbad), true):	err(l, "expected ')' after tuple\n")
+	| ((l, tokbad), false):	err(l, "expected ')' after parenthesized expression\n")
 	;;
 
 	match (exprs.len, istup)
@@ -715,9 +716,39 @@ const parenexpr = {p, loc
 	-> ret
 }
 
-const arrayexpr = {p, l
-	err(l, "array exprs not yet implemented\n")
-	-> mkexpr(l, `Oarr [][:])
+const arrayexpr = {p, loc
+	var elts, a, b
+	/* opening ] already consumed */
+	elts = [][:]
+	while true
+		match expr(p)
+		| `std.Some e:	a = e
+		| `std.None:	break
+		;;
+
+		match tokpeek(p)
+		| (l, `Tcolon):
+			toknext(p)
+			match expr(p)
+			| `std.Some e:	b = e
+			| `std.None:	err(l, "expected expression after ':'\n")
+			;;
+			std.slpush(&elts, (`std.Some a, b))
+		| (l, _):
+			std.slpush(&elts, (`std.None, a))
+		;;
+
+		match tokpeek(p)
+		| (l, `Tcomma):	toknext(p)
+		| (l, _):	break
+		;;
+	;;
+
+	match toknext(p)
+	| (l, `Tcsqbrac): /* ok */
+	| (l, tokbad):	err(l, "expected ']' after array literal\n")
+	;;
+	-> mkexpr(loc, `Oarr elts)
 }
 
 const funcexpr = {p, loc
