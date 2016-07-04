@@ -179,7 +179,7 @@ pkg parse =
 		`Olit	lit
 		`Oucon	(name, std.option(expr#))
 		`Otup	expr#[:]
-		`Ostruct	(name, expr#)[:]
+		`Ostruct	(byte[:], expr#)[:]
 		`Oarr	(std.option(expr#), expr#)[:]
 		`Oidxlen
 	;;

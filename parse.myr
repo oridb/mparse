@@ -45,8 +45,9 @@ const tsfile = {p
 		| (l, `Ttype):	tydefn(p)
 		| (l, `Tendln):	endlns(p)
 		| (l, tok):	
-			if !vardcl(p, true, vis)
-				err(l, "invalid top level item near {}\n", tok)
+			match vardcl(p, true, vis)
+			| `std.Some d:	/* nothing */
+			| `std.None:	err(l, "invalid top level item near {}\n", tok)
 			;;
 		;;
 	;;
@@ -141,14 +142,14 @@ const vardcl = {p, isglobl, vis
 		if hadattr
 			err(l, "unexpected {} in declaration, got {}\n", tokbad)
 		else
-			-> false
+			-> `std.None
 		;;
 	;;
 	if !dcltag(p, dcl)
 		if hadattr
 			err(p.loc, "expected declaration after attr names\n")
 		else
-			-> false
+			-> `std.None
 		;;
 	;;
 	dclname(p, dcl)
@@ -156,7 +157,7 @@ const vardcl = {p, isglobl, vis
 	dclinit(p, dcl)
 	putdcl(p.file.globls, dcl.name, dcl)
 	std.slpush(&p.file.dcls, dcl)
-	-> true
+	-> `std.Some dcl
 }
 
 const dclattrs = {p, dcl
@@ -645,7 +646,7 @@ const atomicexpr = {p
 	| (l, `Tvoidlit):	e = `std.Some mkexpr(l, `Olit `Lvoid)
 	| (l, `Tsizeof):	e = `std.Some sizeofexpr(p, l)
 	| (l, `Toparen):	e = `std.Some parenexpr(p, l)
-	| (l, `Tosqbrac):	e = `std.Some arrayexpr(p, l)
+	| (l, `Tosqbrac):	e = `std.Some sqbracexpr(p, l)
 	| (l, `Tobrace):	e = `std.Some funcexpr(p, l)
 	| _:
 		tokunget(p)
@@ -684,17 +685,20 @@ const parenexpr = {p, loc
 	istup = false
 	exprs = [][:]
 	while true
+		optendlns(p)
 		match expr(p)
 		| `std.Some e:	std.slpush(&exprs, e)
 		| `std.None:	break
 		;;
 
+		optendlns(p)
 		match tokpeek(p)
 		| (l, `Tcomma):	istup = true
 		| (l, _):	break
 		;;
 		toknext(p)
 	;;
+	optendlns(p)
 	match (toknext(p), istup)
 	| ((l, `Tcparen), _): /* ok */
 	| ((l, tokbad), true):	err(l, "expected ')' after tuple\n")
@@ -716,16 +720,70 @@ const parenexpr = {p, loc
 	-> ret
 }
 
-const arrayexpr = {p, loc
-	var elts, a, b
-	/* opening ] already consumed */
+const sqbracexpr = {p, loc
+	/* opening [ already consumed */
+	optendlns(p)
+	match tokpeekt(p)
+	| `Tdot:
+		-> structexpr(p, loc)
+	| _:
+		-> arrayexpr(p, loc)
+	;;
+}
+
+const structexpr = {p, loc
+	var memb, val, asnloc
+	var elts
+
 	elts = [][:]
 	while true
+		optendlns(p)
+		match toknext(p)
+		| (l, `Tdot):	/* ok */
+		| (l, tokbad):	break
+		;;
+
+		match toknext(p)
+		| (l, `Tident n):	memb = n
+		| (l, tokbad):	err(l, "expected '.member' in struct literal\n")
+		;;
+
+		match toknext(p)
+		| (l, `Tasn):	asnloc = l
+		| (l, tokbad):	err(l, "expected '=' after struct literal member specifier\n")
+		;;
+
+		match expr(p)
+		| `std.Some e:	val = e
+		| `std.None:	err(asnloc, "expected expression after '=' in struct literal\n")
+		;;
+
+		match tokpeek(p)
+		| (l, `Tcomma):	toknext(p)
+		| (l, _):	break
+		;;
+
+		std.slpush(&elts, (memb, val))
+	;;
+	optendlns(p)
+	match toknext(p)
+	| (l, `Tcsqbrac): /* ok */
+	| (l, tokbad):	err(l, "expected ']' after struct literal\n")
+	;;
+	-> mkexpr(loc, `Ostruct elts)
+}
+
+const arrayexpr = {p, loc
+	var elts, a, b
+	elts = [][:]
+	while true
+		optendlns(p)
 		match expr(p)
 		| `std.Some e:	a = e
 		| `std.None:	break
 		;;
 
+		optendlns(p)
 		match tokpeek(p)
 		| (l, `Tcolon):
 			toknext(p)
@@ -738,12 +796,14 @@ const arrayexpr = {p, loc
 			std.slpush(&elts, (`std.None, a))
 		;;
 
+		optendlns(p)
 		match tokpeek(p)
 		| (l, `Tcomma):	toknext(p)
 		| (l, _):	break
 		;;
 	;;
 
+	optendlns(p)
 	match toknext(p)
 	| (l, `Tcsqbrac): /* ok */
 	| (l, tokbad):	err(l, "expected ']' after array literal\n")
@@ -990,11 +1050,7 @@ const matchstmt = {p
 }
 
 const dclstmt = {p
-	match tokpeek(p)
-	| (l, `Tvar):	toknext(p)
-	| (l, _):	-> `std.None
-	;;
-	-> `std.None
+	-> vardcl(p, false, `Visintern)
 }
 
 const typestmt = {p
@@ -1060,7 +1116,7 @@ const stmt = {p
 	| `std.None:	/* nothing */
 	;;
 	match dclstmt(p)
-	| `std.Some e:	-> `std.Some mkstmt(loc, `Ndcl e)
+	| `std.Some d:	-> `std.Some mkstmt(loc, `Ndcl d)
 	| `std.None:	/* nothing */
 	;;
 	match traitstmt(p)

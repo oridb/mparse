@@ -5,7 +5,8 @@ use "parse.use"
 use "dump.use"
 
 const main = {args
-	var ts, cmd
+	var ts
+	var cmd
 
 	cmd = std.optparse(args, &[
 		.argdesc="files..."
