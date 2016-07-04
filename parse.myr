@@ -45,8 +45,8 @@ const tsfile = {p
 		| (l, `Ttype):	tydefn(p)
 		| (l, `Tendln):	endlns(p)
 		| (l, tok):	
-			match vardcl(p, true, vis)
-			| `std.Some d:	/* nothing */
+			match vardcls(p, true, vis)
+			| `std.Some d:	std.slfree(d)
 			| `std.None:	err(l, "invalid top level item near {}\n", tok)
 			;;
 		;;
@@ -117,27 +117,26 @@ const typarams = {p
 	-> std.slalloc(0)
 }
 
-const vardcl = {p, isglobl, vis
-	var dcl : dcl#
+const vardcls = {p, isglobl, vis
+	var dcl, dcls
+	var ispkglocal, isextern, isnoret, isconst, isgeneric
 	var hadattr
 
+	dcls = [][:]
 	/* attributes */
-	dcl = std.mk([
-		.id = p.file.dcls.len,
-		.vis = vis,
-		.init = `std.None,
-		.tr = `std.None,
-		.isglobl = isglobl,
-	])
-
-	hadattr = dclattrs(p, dcl)
+	isconst = false
+	isgeneric = false
+	isnoret = false
+	isextern = false
+	ispkglocal = false
+	hadattr = dclattrs(p, &isextern, &isnoret, &ispkglocal)
 	/* attributes (const | var) */
 	match tokpeek(p)
-	| (l, `Tvar):	dcl.isconst = false
-	| (l, `Tconst):	dcl.isconst = true
+	| (l, `Tvar):	isconst = false
+	| (l, `Tconst):	isconst = true
 	| (l, `Tgeneric):	
-		dcl.isconst = true
-		dcl.isgeneric = true
+		isconst = true
+		isgeneric = true
 	| (l, tokbad):
 		if hadattr
 			err(l, "unexpected {} in declaration, got {}\n", tokbad)
@@ -145,30 +144,44 @@ const vardcl = {p, isglobl, vis
 			-> `std.None
 		;;
 	;;
-	if !dcltag(p, dcl)
-		if hadattr
-			err(p.loc, "expected declaration after attr names\n")
-		else
-			-> `std.None
+	toknext(p)
+
+	while true
+		std.put("dcl\n")
+		dcl = std.mk([
+			.loc = p.loc,
+			.id = p.file.dcls.len,
+			.vis = vis,
+			.init = `std.None,
+			.tr = `std.None,
+			.isglobl = isglobl,
+			.isconst = isconst,
+			.isgeneric = isgeneric
+		])
+		dclname(p, dcl)
+		dcltype(p, dcl)
+		dclinit(p, dcl)
+		putdcl(p.file.globls, dcl.name, dcl)
+		std.slpush(&p.file.dcls, dcl)
+		std.slpush(&dcls, dcl)
+
+		match tokpeek(p)
+		| (_, `Tcomma):	toknext(p)
+		| (_, _):	break
 		;;
 	;;
-	dclname(p, dcl)
-	dcltype(p, dcl)
-	dclinit(p, dcl)
-	putdcl(p.file.globls, dcl.name, dcl)
-	std.slpush(&p.file.dcls, dcl)
-	-> `std.Some dcl
+	-> `std.Some dcls
 }
 
-const dclattrs = {p, dcl
+const dclattrs = {p, isextern, isnoret, ispkglocal
 	var hadattr
 
 	hadattr = false
 	while true
 		match tokpeek(p)
-		| (_, `Tpkglocal):	dcl.ispkglocal = true
-		| (_, `Textern):	dcl.isextern = true
-		| (_, `Tnoret):		dcl.isnoret = true
+		| (_, `Tpkglocal):	ispkglocal# = true
+		| (_, `Textern):	isextern# = true
+		| (_, `Tnoret):		isnoret# = true
 		| _:	break
 		;;
 		toknext(p)
@@ -177,31 +190,16 @@ const dclattrs = {p, dcl
 	-> hadattr
 }
 
-const dcltag = {p, dcl
-	/* attributes (const | var) */
-	match tokpeek(p)
-	| (_, `Tvar):	dcl.isconst = false
-	| (_, `Tconst):	dcl.isconst = true
-	| (_, `Tgeneric):	
-		dcl.isconst = true
-		dcl.isgeneric = true
-	| (l, tokbad):
-		-> false
-	;;
-	toknext(p)
-	-> true
-}
-
-const dclname = {p, dcl : dcl#
+const dclname = {p, dcl
 	/* attributes (const | var) name */
 	match name(p)
 	| `std.Some n:
 		if n.ns.len > 0 && !dcl.isextern
-			std.fatal("only extern decls may provide namespaces\n")
+			err(dcl.loc, "only extern decls may provide namespaces\n")
 		;;
 		dcl.name = n
 	| `std.None:	
-		std.fatal("expected name in decl, got {}\n", tokpeekt(p))
+		err(dcl.loc, "expected name in decl, got {}\n", tokpeekt(p))
 	;;
 }
 
@@ -1049,10 +1047,6 @@ const matchstmt = {p
 	-> `std.None
 }
 
-const dclstmt = {p
-	-> vardcl(p, false, `Visintern)
-}
-
 const typestmt = {p
 	match tokpeek(p)
 	| (l, `Ttype):	toknext(p)
@@ -1078,14 +1072,28 @@ const implstmt = {p
 }
 
 const blkbody = {p, st
-	var stmts
+	var stmts, found
 
 	stmts = [][:]
-	while true
+	found = true
+	while found
+		found = false
+		optendlns(p)
+		match vardcls(p, false, `Visintern)
+		| `std.None:
+		| `std.Some dcls:
+			found = true
+			for d in dcls
+				std.slpush(&stmts, mkstmt(d.loc, `Ndcl d))
+			;;
+		;;
+
 		optendlns(p)
 		match stmt(p)
-		| `std.Some s:	std.slpush(&stmts, s)
-		| `std.None:	break
+		| `std.None:
+		| `std.Some s:
+			found = true
+			std.slpush(&stmts, s)
 		;;
 	;;
 	-> mkblk(p.loc, st, stmts)
@@ -1113,10 +1121,6 @@ const stmt = {p
 	;;
 	match matchstmt(p)
 	| `std.Some e:	-> `std.Some mkstmt(loc, `Nmatch e)
-	| `std.None:	/* nothing */
-	;;
-	match dclstmt(p)
-	| `std.Some d:	-> `std.Some mkstmt(loc, `Ndcl d)
 	| `std.None:	/* nothing */
 	;;
 	match traitstmt(p)

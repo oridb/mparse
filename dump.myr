@@ -343,7 +343,7 @@ const litdump = {sb, lit, ind
 	| `Lint	(v, _, _):	ifmt(sb, ind, "{}", v)
 	| `Lflt	v:	ifmt(sb, ind, "{}", v)
 	| `Lchr	v:	ifmt(sb, ind, "{}", v)
-	| `Lstr	v:	ifmt(sb, ind, "{}", v)
+	| `Lstr	v:	ifmt(sb, ind, "\"{e}\"", v)
 	| `Llbl	v:	ifmt(sb, ind, "{}", v)
 	| `Lbool v:	ifmt(sb, ind, "{}", v)
 	| `Lfunc v:	fndump(sb, v, ind)
@@ -384,7 +384,7 @@ const stmtdump = {sb, stmt, ind
 	| &(`Niter s):	iterdump(sb, s, ind)
 	| &(`Nif s):	ifdump(sb, s, ind)
 	| &(`Nmatch s):	std.fatal("match not yet implemented\n")
-	| &(`Ndcl s):	std.fatal("dcl not yet implemented\n")
+	| &(`Ndcl s):	dcldump(sb, s, ind)
 	| &(`Ntrait s):	std.fatal("trait not yet implemented\n")
 	| &(`Nimpl s):	std.fatal("impl not yet implemented\n")
 	;;
@@ -416,3 +416,4 @@ const ifdump = {sb, s, ind
 	blkdump(sb, s.iffalse, ind + 2, true)
 	std.sbputs(sb, "\n")
 }
+
