@@ -40,7 +40,7 @@ const tsfile = {p
 		match tokpeek(p)
 		| (l, `Teof):	break
 		| (l, `Tuse):	usestmt(p)
-		| (l, `Tpkg):	pkgdef(p)
+		| (l, `Tpkg):	pkgdef(f, p)
 		| (l, `Ttrait):	traitdef(p)
 		| (l, `Ttype):	tydefn(p)
 		| (l, `Tendln):	endlns(p)
@@ -67,8 +67,42 @@ const usestmt = {p
 	;;
 }
 
-const pkgdef = {p
-	std.fatal("unimplemented pkg\n")
+const pkgdef = {f, p
+	var name
+
+	match toknext(p)
+	| (l, `Tpkg):	/* ok */
+	| (l, tokbad):	std.die("wtf, should have already taken a pkg\n")
+	;;
+
+	match toknext(p)
+	| (l, `Tident n):	name = n
+	| (l, _):	name = ""
+	;;
+
+	match toknext(p)
+	| (l, `Tasn):	/* ok */
+	| (l, tokbad):	err(l, "expected '=' after package name, got {}\n", tokbad)
+	;;
+
+	setpkg(f, p.curstab, name)
+	p.curns = name
+	while true
+		match tokpeek(p)
+		| (l, `Tendln):	endlns(p)
+		| (l, `Tuse):	usestmt(p)
+		| (l, `Ttrait):	traitdef(p)
+		| (l, `Ttype):	tydefn(p)
+		| (l, `Tendblk):
+			toknext(p)
+			break
+		| (l, tok):	
+			match vardcls(p, true, `Visexport)
+			| `std.Some d:	std.slfree(d)
+			| `std.None:	err(l, "invalid pkg export near {}\n", tok)
+			;;
+		;;
+	;;
 }
 
 const traitdef = {p
@@ -107,7 +141,7 @@ const tydefn = {p
 	;;
 
 	match ty
-	| `std.Some t:	puttype(p.file.globls, [.ns = p.curns, .name=name], t)
+	| `std.Some t:	puttype(p.file.globls, [.ns=p.curns, .name=name], t)
 	| `std.None:	puttypefwd(p.file.globls, [.ns=p.curns, .name=name], loc)
 	;;
 }
@@ -193,8 +227,8 @@ const dclname = {p, dcl
 	/* attributes (const | var) name */
 	match name(p)
 	| `std.Some n:
-		if n.ns.len > 0 && !dcl.isextern
-			err(dcl.loc, "only extern decls may provide namespaces\n")
+		if !std.streq(p.curns, n.ns) && !dcl.isextern
+			err(dcl.loc, "only extern decls may change namespaces\n")
 		;;
 		dcl.name = n
 	| `std.None:	
@@ -634,7 +668,7 @@ const atomicexpr = {p
 
 	match toknext(p)
 	| (l, `Tgap):		e = `std.Some mkexpr(l, `Ogap)
-	| (l, `Tident n):	e = `std.Some mkexpr(l, `Ovar [.ns="", .name=n])
+	| (l, `Tident n):	e = `std.Some mkexpr(l, `Ovar [.ns=p.curns, .name=n])
 	| (l, `Tintlit i):	e = `std.Some mkexpr(l, `Olit `Lint i)
 	| (l, `Tstrlit s):	e = `std.Some mkexpr(l, `Olit `Lstr s)
 	| (l, `Tfltlit f):	e = `std.Some mkexpr(l, `Olit `Lflt f)
@@ -1196,7 +1230,7 @@ const name = {p -> std.option(name)
 
 	match tokpeek(p)
 	| (l, `Tdot):	ns = n
-	| (l, _):	-> `std.Some [.ns = "", .name = n]
+	| (l, _):	-> `std.Some [.ns=p.curns, .name=n]
 	;;
 	toknext(p)
 
@@ -1267,7 +1301,7 @@ const dclcore = {p
 		.init = `std.None,
 		.tr = `std.None,
 		.isglobl = false,
-		.name = [.ns="", .name=nam]
+		.name = [.ns=p.curns, .name=nam]
 	])
 	dcltype(p, dcl)
 	-> `std.Some dcl
@@ -1403,7 +1437,7 @@ const tyunion = {p, loc
 		;;
 		std.slpush(&elts, std.mk([
 			.loc = tagloc,
-			.tag = [.ns="", .name=tag],
+			.tag = [.ns=p.curns, .name=tag],
 			.ety = ty,
 		]))
 
