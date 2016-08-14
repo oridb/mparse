@@ -985,11 +985,7 @@ const forsteploop = {p, loc, init, st
 	var cond, step
 	var blk
 
-	std.put("forsteploop\n")
-	match toknext(p)
-	| (l, `Tendln):	/* ok */
-	| (l, tokbad):	err(l, "expected ';' after for init\n")
-	;;
+	/* init already parsed up to ';' */
 	match expr(p)
 	| `std.Some e:	cond = e
 	| `std.None:	cond = mkexpr(p.loc, `Onop)
