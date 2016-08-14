@@ -1189,7 +1189,6 @@ const blkbody = {p, st
 const stmt = {p
 	var loc
 
-	std.put("loc: {}\n", p.loc)
 	loc = p.loc
 	match retexpr(p)
 	| `std.Some e:	-> `std.Some mkstmt(loc, `Nexpr e)
