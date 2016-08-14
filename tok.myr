@@ -547,7 +547,7 @@ const oper = {ts
 		;;
 	| c:
 		t = `Terror;
-		err(ts.loc, "junk character '{}' ({x})", c, (c:int32));
+		err(ts.loc, "junk character '{}' ({x})\n", c, (c:int32));
 	;;
 	-> t
 }
