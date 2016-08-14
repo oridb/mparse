@@ -52,7 +52,10 @@ const setpkg = {f, st, ns
 const putdcl = {st, n, sym
 	std.assert(std.streq(st.ns, n.ns), "sym name {} mismatches stab name {}\n", n, st.ns)
 	match std.htget(st.syms, n)
-	| `std.Some `Dcl d:	err(sym.loc, "duplicate declaration of {}, first declared on {}\n", n, d.loc)
+	| `std.Some `Dcl d:
+		if !mergedcl(d, sym)
+			err(sym.loc, "duplicate declaration of {}, first declared on {}\n", n, d.loc)
+		;;
 	| `std.Some `Ucon u:	err(sym.loc, "duplicate declaration of {}, first declared on {}\n", n, u.loc)
 	| `std.None:	/* everthing is fine */
 	;;
@@ -92,6 +95,29 @@ const puttypefwd = {st, n, loc
 	;;
 	std.htput(st.types, n, `Tyfwd loc)
 }
+
+const mergedcl = {old, new
+       match old.init
+       | `std.None:    -> mergablety(old.ty, new.ty)
+       | `std.Some _:
+               match new.init
+               | `std.Some _:  -> false        /* double initialized */
+               | `std.None:    -> mergablety(old.ty, new.ty)
+               ;;
+       ;;
+}
+
+const mergablety = {old, new
+       match old
+       | (&[.ty=`Tyvar _]):    -> true
+       | _:
+               match new
+               | (&[.ty=`Tyvar _]):    -> true
+               | (&[.ty=_]):   -> false
+               ;;
+       ;;
+}
+
 
 const stnamehash = {n
 	-> std.strhash(n.name)
