@@ -384,7 +384,7 @@ const unionexpr = {p
 		| `std.None:	err(l, "expected union tag after '`'\n")
 		;;
 
-		expr = castexpr(p)
+		expr = unionexpr(p)
 		-> `std.Some mkexpr(l, `Oucon (tag, expr))
 	| _:
 		-> castexpr(p)
