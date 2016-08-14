@@ -385,7 +385,6 @@ const kwident = {ts
 	| "_": 	-> `Tgap
 	| "$noret": 	-> `Tnoret
 	| "break": 	-> `Tbreak
-	| "castto": 	-> `Tcast
 	| "const": 	-> `Tconst
 	| "continue": 	-> `Tcont
 	| "elif": 	-> `Telif

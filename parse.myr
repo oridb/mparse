@@ -387,39 +387,7 @@ const unionexpr = {p
 		expr = unionexpr(p)
 		-> `std.Some mkexpr(l, `Oucon (tag, expr))
 	| _:
-		-> castexpr(p)
-	;;
-}
-
-const castexpr = {p
-	var ty
-
-	match binexpr(p)
-	| `std.Some e:
-		match tokpeek(p)
-		| (l, `Tcast):
-			toknextt(p)
-			match toknext(p)
-			| (pl, `Toparen):
-			| (pl, tokbad):	err(l, "expected '(' after 'castto', got {}\n", tokbad)
-			;;
-
-			match typ(p)
-			| `std.Some t:	ty = t
-			| `std.None:	err(p.loc, "expected type in castto near {}\n", tokpeekt(p))
-			;;
-
-			match toknext(p)
-			| (pl, `Tcparen):
-			| (pl, tokbad):	err(l, "expected '(' after 'castto', got {}\n", tokbad)
-			;;
-
-			-> `std.Some mkexpr(l, `Ocast (e, ty))
-		| _:	
-			-> `std.Some e
-		;;
-	| `std.None:
-		-> `std.None
+		-> binexpr(p)
 	;;
 }
 
@@ -709,13 +677,16 @@ const sizeofexpr = {p, loc
 }
 
 const parenexpr = {p, loc
-	var exprs, ret, istup
+	var exprs, ret, ty
+	var istup, iscast
 	var loc
 	
 	/* opening ( already consumed */
 	istup = false
 	exprs = [][:]
+	ty = &[.ty=`Tyvoid] /* dummy */
 	while true
+
 		optendlns(p)
 		match expr(p)
 		| `std.Some e:	std.slpush(&exprs, e)
@@ -724,11 +695,25 @@ const parenexpr = {p, loc
 
 		optendlns(p)
 		match tokpeek(p)
-		| (l, `Tcomma):	istup = true
-		| (l, _):	break
+		| (l, `Tcomma):
+			toknext(p)
+			istup = true
+		| (l, `Tcolon):
+			toknext(p)
+			if istup
+				err(l, "attempted cast in tuple construction\n")
+			;;
+			iscast = true
+			match typ(p)
+			| `std.Some t:	ty = t
+			| `std.None:	err(l, "expected type after ':'\n")
+			;;
+			break
+		| (l, _):	
+			break
 		;;
-		toknext(p)
 	;;
+
 	optendlns(p)
 	match (toknext(p), istup)
 	| ((l, `Tcparen), _): /* ok */
@@ -746,6 +731,9 @@ const parenexpr = {p, loc
 		ret = mkexpr(loc, `Otup exprs)
 	else
 		ret = exprs[0]
+		if iscast
+			ret = mkexpr(loc, `Ocast (ret, ty))
+		;;
 		std.slfree(exprs)
 	;;
 	-> ret
