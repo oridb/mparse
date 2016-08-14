@@ -1460,14 +1460,17 @@ const tyunion = {p, loc
 	loc = p.loc
 	elts = [][:]
 	while true
+		optendlns(p)
 		match tokpeek(p)
-		| (l, `Ttick):	tagloc = l
+		| (l, `Ttick):
+			tagloc = l
+			toknext(p)
 		| _:	break
 		;;
 
 		match toknext(p)
 		| (l, `Tident n):	tag = n
-		| (l, tokbad):	err(l, "expected tag name after '`', got {}\n", tokbad)
+		| (l, tokbad):	err(l, "expected tag name after '`', got '{}'\n", tokbad)
 		;;
 
 		match tokpeek(p)
@@ -1484,7 +1487,12 @@ const tyunion = {p, loc
 			.tag = [.ns=p.curns, .name=tag],
 			.ety = ty,
 		]))
+	;;
 
+	optendlns(p)
+	match tokpeek(p)
+	| (l, `Tendblk):	toknext(p)
+	| (l, tokbad):	err(l, "expected ';;' after union, got {}\n", tokbad)
 	;;
 
 	u = mkty(loc, `Tyunion elts)
