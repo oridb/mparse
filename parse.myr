@@ -882,6 +882,11 @@ const funcargs = {p
 		| `std.None:
 			break
 		;;
+
+		match tokpeek(p)
+		| (l, `Tcomma):	toknext(p)
+		| _:	break;
+		;;
 	;;
 
 	match tokpeek(p)
