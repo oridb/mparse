@@ -669,8 +669,8 @@ const sizeofexpr = {p, loc
 	;;
 
 	match toknext(p)
-	| (_, `Toparen):	/* ok */
-	| (l, tokbad):	err(l, "expected '(' after sizeof, got {}\n", tokbad)
+	| (_, `Tcparen):	/* ok */
+	| (l, tokbad):	err(l, "expected ')' after sizeof, got {}\n", tokbad)
 	;;
 
 	-> mkexpr(loc, `Osize ty)
