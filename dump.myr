@@ -379,6 +379,10 @@ const blkdump = {sb, blk, ind, showstab
 
 const stmtdump = {sb, stmt, ind
 	match stmt
+	| &(`Nbreak):	ifmt(sb, ind, "break\n")
+	| &(`Ncont):	ifmt(sb, ind, "cont\n")
+	| &(`Nlbl l):	ifmt(sb, ind, ":{}\n", l)
+	| &(`Ngoto l): 	ifmt(sb, ind, "goto {}\n", l)
 	| &(`Nexpr s):	exprdump(sb, s, ind)
 	| &(`Nloop s):	loopdump(sb, s, ind)
 	| &(`Niter s):	iterdump(sb, s, ind)

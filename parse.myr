@@ -769,9 +769,9 @@ const structexpr = {p, loc
 	elts = [][:]
 	while true
 		optendlns(p)
-		match toknext(p)
-		| (l, `Tdot):	/* ok */
-		| (l, tokbad):	break
+		match tokpeek(p)
+		| (l, `Tdot):	toknext(p)
+		| (l, _):	break
 		;;
 
 		match toknext(p)
@@ -799,7 +799,7 @@ const structexpr = {p, loc
 	optendlns(p)
 	match toknext(p)
 	| (l, `Tcsqbrac): /* ok */
-	| (l, tokbad):	err(l, "expected ']' after struct literal\n")
+	| (l, tokbad):	err(l, "expected ']' after struct literal, got {}\n", tokbad)
 	;;
 	-> mkexpr(loc, `Ostruct elts)
 }
@@ -1084,6 +1084,7 @@ const matchstmt = {p
 	| `std.Some e:	val = e
 	| `std.None:	err(p.loc, "expected expression after match, got {}\n", tokpeekt(p))
 	;;
+
 	match toknext(p)
 	| (l, `Tendln):	/* nothing */
 	| (l, tokbad):	err(l, "expected ';' after match expression\n")
@@ -1091,11 +1092,13 @@ const matchstmt = {p
 
 	cases = [][:]
 	while true
+		optendlns(p)
 		match matchcase(p)
 		| `std.Some c:	std.slpush(&cases, c)
 		| `std.None:	break
 		;;
 	;;
+	optendlns(p)
 	endblk(p, "match")
 
 	-> `std.Some mkmatch(loc, val, cases)
@@ -1106,7 +1109,7 @@ const matchcase = {p
 
 	match tokpeek(p)
 	| (l, `Tbor):	toknext(p)
-	| (l, _):	-> `std.None
+	| (l, tok):	-> `std.None
 	;;
 
 	match expr(p)
@@ -1214,6 +1217,17 @@ const stmt = {p
 	match typestmt(p)
 	| `std.Some (n, t):	puttype(p.curstab, t, n)
 	| `std.None:	/* nothing */
+	;;
+	/*
+	match lblstmt(p)
+	| `std.Some l:	-> `std.Some mkstmt(loc, `Nlbl l)
+	| `std.None:	/* nothing */
+	;;
+	*/
+	match toknext(p)
+	| (l, `Tbreak):	-> `std.Some mkstmt(l, `Nbreak)
+	| (l, `Tcont):	-> `std.Some mkstmt(l, `Ncont)
+	| (l, tok):	tokunget(p)
 	;;
 
 	-> `std.None
@@ -1435,6 +1449,7 @@ const tyunion = {p, loc
 			| `std.None:	err(l, "expected type or endln after union tag\n")
 			;;
 		;;
+
 		std.slpush(&elts, std.mk([
 			.loc = tagloc,
 			.tag = [.ns=p.curns, .name=tag],

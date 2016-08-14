@@ -387,7 +387,7 @@ const kwident = {ts
 	| "break": 	-> `Tbreak
 	| "castto": 	-> `Tcast
 	| "const": 	-> `Tconst
-	| "continue": 	-> `Tcontinue
+	| "continue": 	-> `Tcont
 	| "elif": 	-> `Telif
 	| "else": 	-> `Telse
 	| "extern": 	-> `Textern
