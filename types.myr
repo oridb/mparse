@@ -93,7 +93,7 @@ pkg parse =
 		/* compound types */
 		`Tyslice tydef#
 		`Typtr tydef#
-		`Tyarray (tydef#, expr#)
+		`Tyarray (tydef#, std.option(expr#))
 		`Tystruct dcl#[:]
 		`Tyunion ucon#[:]
 		`Tytuple tydef#[:]

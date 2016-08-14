@@ -267,7 +267,8 @@ const tydefdump = {sb, ty
 	/* compound types */
 	| `Tyslice sub:	std.sbfmt(sb, "{}[:]", sub)
 	| `Typtr sub:	std.sbfmt(sb, "{}#", sub)
-	| `Tyarray (sub, len):	std.sbfmt(sb, "{}[{}]", sub, len)
+	| `Tyarray (sub, `std.Some len):	std.sbfmt(sb, "{}[{}]", sub, len)
+	| `Tyarray (sub, `std.None):	std.sbfmt(sb, "{}[...]", sub)
 	| `Tystruct dcls:	structdump(sb, dcls)
 	| `Tyunion dcls:	uniondump(sb, dcls)
 	| `Tytuple args:	parendump(sb, args, `std.None)

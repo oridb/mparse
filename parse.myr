@@ -1544,9 +1544,13 @@ const tysuffixed = {p, base
 				toknext(p)
 				base = mkty(l, `Tyslice base)
 				expectcsqbrac(p, "in slice type")
+			| `Tellipsis:
+				toknext(p)
+				base = mkty(l, `Tyarray (base, `std.None))
+				expectcsqbrac(p, "in array type")
 			| _:
 				match expr(p)
-				| `std.Some e:	base = mkty(l, `Tyarray (base, e))
+				| `std.Some e:	base = mkty(l, `Tyarray (base, `std.Some e))
 				| `std.None:	err(p.loc, "expected expression in array size\n")
 				;;
 				expectcsqbrac(p, "in array type")
