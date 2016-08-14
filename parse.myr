@@ -1439,7 +1439,6 @@ const tupletype = {p, loc, firstname
 	;;
 
 	while true
-		std.put("tok: {}\n", tokpeekt(p))
 		match typ(p)
 		| `std.Some ty:	std.slpush(&args, ty)
 		| `std.None:	break
