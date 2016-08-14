@@ -1031,7 +1031,6 @@ const forsteploop = {p, loc, init, st
 const foriterloop = {p, loc, pat, st
 	var iter, blk
 
-	std.put("foriterloop\n")
 	match expr(p)
 	| `std.Some e:	iter = e
 	| `std.None:	err(p.loc, "expected iterator expression after 'in'\n")
@@ -1190,6 +1189,7 @@ const blkbody = {p, st
 const stmt = {p
 	var loc
 
+	std.put("loc: {}\n", p.loc)
 	loc = p.loc
 	match retexpr(p)
 	| `std.Some e:	-> `std.Some mkstmt(loc, `Nexpr e)
@@ -1223,12 +1223,14 @@ const stmt = {p
 	| `std.Some (n, t):	puttype(p.curstab, t, n)
 	| `std.None:	/* nothing */
 	;;
-	/*
 	match lblstmt(p)
 	| `std.Some l:	-> `std.Some mkstmt(loc, `Nlbl l)
 	| `std.None:	/* nothing */
 	;;
-	*/
+	match gotostmt(p)
+	| `std.Some l:	-> `std.Some mkstmt(loc, `Ngoto l)
+	| `std.None:	/* nothing */
+	;;
 	match toknext(p)
 	| (l, `Tbreak):	-> `std.Some mkstmt(l, `Nbreak)
 	| (l, `Tcont):	-> `std.Some mkstmt(l, `Ncont)
@@ -1236,6 +1238,30 @@ const stmt = {p
 	;;
 
 	-> `std.None
+}
+
+const lblstmt = {p
+	match tokpeek(p)
+	| (l, `Tcolon):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
+
+	match toknext(p)
+	| (l, `Tident id):	-> `std.Some [.ns="", .name=id]
+	| (l, tokbad):	std.fatal("expected name after ':', got {}\n", tokbad)
+	;;
+}
+
+const gotostmt = {p
+	match tokpeek(p)
+	| (l, `Tgoto):	toknext(p)
+	| (l, _):	-> `std.None
+	;;
+
+	match toknext(p)
+	| (l, `Tident id):	-> `std.Some [.ns="", .name=id]
+	| (l, tokbad):	std.fatal("expected name after ':', got {}\n", tokbad)
+	;;
 }
 
 const name = {p -> std.option(name)
@@ -1473,7 +1499,7 @@ const tyunion = {p, loc
 const tyname = {p
 	match name(p)
 	| `std.Some n:	-> typaramname(p, n)
-	| `std.None:	std.die("we came hear after peeking an ident\n")
+	| `std.None:	std.die("no ident after peeking an ident\n")
 	;;
 }
 
@@ -1482,11 +1508,40 @@ const typaramname = {p, nam
 
 	params = [][:]
 	match tokpeek(p)
-	| (l, `Toparen):	err(l, "param lists aren't yet supported\n")
+	| (l, `Toparen):	params = typaramlist(p)
 	| (l, _):
 	;;
 
 	-> mkty(p.loc, `Tyunres (nam, params))
+}
+
+const typaramlist = {p
+	var params
+
+	params = [][:]
+	match toknext(p)
+	| (l, `Toparen):
+	| (l, tokbad):	std.die("no '(' after peeking '('\n")
+	;;
+
+	while true
+		match typ(p)
+		| `std.Some ty:	std.slpush(&params, ty)
+		| `std.None:	break
+		;;
+
+		match tokpeek(p)
+		| (l, `Tcomma):	toknext(p)
+		| _:
+		;;
+	;;
+
+	match toknext(p)
+	| (l, `Tcparen):
+	| (l, tokbad):	err(l, "expected ')' type params, got {}\n", tokbad)
+	;;
+
+	-> params
 }
 
 const tysuffixed = {p, base
