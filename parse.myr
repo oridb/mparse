@@ -51,6 +51,7 @@ const tsfile = {p
 			;;
 		;;
 	;;
+	popstab(p)
 	-> f
 }
 
@@ -194,7 +195,7 @@ const vardcls = {p, isglobl, vis
 		dclname(p, dcl)
 		dcltype(p, dcl)
 		dclinit(p, dcl)
-		putdcl(p.file.globls, dcl.name, dcl)
+		putdcl(p.curstab, dcl.name, dcl)
 		std.slpush(&p.file.dcls, dcl)
 		std.slpush(&dcls, dcl)
 
@@ -834,6 +835,7 @@ const funcexpr = {p, loc
 	/* opening { already consumed */
 	var args, blk, st, ty
 	var fn
+	var stkst, i
 
 	args = [][:]
 	st = mkstab(`std.Some p.curstab)
@@ -851,6 +853,7 @@ const funcexpr = {p, loc
 	| (l, `Tcbrace):	/* we're ok */
 	| (l, tokbad):	err(l, "expected '}}' at end of function, got {}\n", tokbad)
 	;;
+	popstab(p)
 
 	fn = mkfunc(loc, st, ty, args, blk)
 	-> mkexpr(loc, `Olit `Lfunc fn)
