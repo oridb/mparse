@@ -314,7 +314,7 @@ const exprcore = {p, lhs, minprec
 			if (!assoc && peekprec <= prec) || (assoc && peekprec < prec)
 				break
 			;;
-			rhs = binexprcore(p, rhs, peekprec)
+			rhs = exprcore(p, rhs, peekprec)
 			(peekloc, peek) = tokpeek(p)
 		;;
 		match op
@@ -347,7 +347,7 @@ const exprcore = {p, lhs, minprec
 
 const exprprec = {tok
 	match tok
-	/* assignmets */
+	/* assignments */
 	| `Tasn:	-> (0, true)
 	| `Taddeq:	-> (0, true)
 	| `Tsubeq:	-> (0, true)
