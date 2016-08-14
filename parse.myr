@@ -1430,7 +1430,7 @@ const tupletype = {p, loc, firstname
 	match firstname
 	| `std.None:	/* everything is ok */
 	| `std.Some n:
-		std.slpush(&args, typaramname(p, n))
+		std.slpush(&args, tysuffixed(p, typaramname(p, n)))
 		match toknext(p)
 		| (l, `Tcomma):	/* nothing */
 		| (l, `Tcparen):	/* nothing */
