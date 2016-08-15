@@ -50,7 +50,6 @@ const setpkg = {f, st, ns
 }
 
 const putdcl = {st, n, sym
-	std.assert(std.streq(st.ns, n.ns), "sym name {} mismatches stab name {}\n", n, st.ns)
 	match std.htget(st.syms, n)
 	| `std.Some `Dcl d:
 		if !mergedcl(d, sym)
