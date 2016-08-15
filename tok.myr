@@ -351,10 +351,10 @@ const number = {ts, base
 		;;
 
 		match peekc(ts)
-		| 'l':	bits = 64
-		| 'i':	bits = 32
-		| 's':	bits = 16
-		| 'b':	bits = 8
+		| 'l':	takec(ts); bits = 64
+		| 'i':	takec(ts); bits = 32
+		| 's':	takec(ts); bits = 16
+		| 'b':	takec(ts); bits = 8
 		| _:	bits = minbits(v, issigned)
 		;;
 		v = std.get(std.intparsebase(buf[:nbuf], base))
