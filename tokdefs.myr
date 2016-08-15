@@ -182,7 +182,7 @@ const tokfmt = {sb, ap, opts
 	| `Tvoidlit:	std.sbfmt(sb, "void")
 
 	| `Ttrait:	std.sbfmt(sb, "trait")
-	| `Timpl:	std.sbfmt(sb, "trait")
+	| `Timpl:	std.sbfmt(sb, "impl")
 	| `Tstruct:	std.sbfmt(sb, "struct")
 	| `Tunion:	std.sbfmt(sb, "union")
 	| `Ttyparam tp:	std.sbfmt(sb, "@{}", tp)
