@@ -841,6 +841,7 @@ const funcexpr = {p, loc
 	pushstab(p, st)
 	match tokpeek(p)
 	| (l, `Tident id):	(ty, args) = funcargs(p)
+	| (l, `Tret):	(ty, args) = funcargs(p)
 	| (l, `Tendln):	ty = mkty(loc, `Tyfunc std.sldup([mktyvar(loc)][:]))	/* (-> $t) */
 	| (l, tokbad):	err(l, "expected function arguments near {}\n", tokbad)
 	;;
