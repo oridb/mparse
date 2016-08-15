@@ -102,7 +102,7 @@ pkg parse =
 		`Tygeneric (byte[:], tydef#[:], tydef#)
 		`Tyname	(name, tydef#[:], tydef#)
 		`Tyunres	(name, tydef#[:])
-		`Typaram byte[:]
+		`Typaram (byte[:], name[:])
 		`Tyvar int64
 	;;
 

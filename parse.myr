@@ -1281,8 +1281,8 @@ const typ = {p
 	| (l, `Tstruct):	ty = tystruct(p, l)
 	| (l, `Tunion):		ty = tyunion(p, l)
 	| (l, `Toparen):	ty = typaren(p, l)
+	| (l, `Ttyparam n):	ty = typaram(p, l, n)
 	| (l, `Tellipsis):	ty = mkty(l, `Tyvalist)
-	| (l, `Ttyparam n):	ty = mkty(l, `Typaram n)
 	| (l, `Tvoidlit):	ty = mkty(l, `Tyvoid)
 	| (l, `Tident id):
 		tokunget(p)
@@ -1293,6 +1293,52 @@ const typ = {p
 	;;
 
 	-> `std.Some tysuffixed(p, ty)
+}
+
+const typaram = {p, loc, name
+	var traits
+
+	traits = [][:]
+	match tokpeek(p)
+	| (l, `Twith):
+		toknext(p)
+		traits = traitlist(p)
+	| _:
+	;;
+	-> mkty(loc, `Typaram (name, traits))
+}
+
+const traitlist = {p
+	var traits
+
+	traits = [][:]
+	match tokpeek(p)
+	| (l, `Tident id):
+		match name(p)
+		| `std.Some n:	std.slpush(&traits, n)
+		| `std.None:	err(p.loc, "expected name in trait\n")
+		;;
+	| (_, `Toparen):
+		toknext(p)
+		while true
+			match name(p)
+			| `std.Some n:	std.slpush(&traits, n)
+			| `std.None:	err(p.loc, "expected name in trait list\n")
+			;;
+
+			match toknext(p)
+			| (l, `Tcomma):	/* ok */
+			| (l, _):	break
+			;;
+		;;
+		match toknext(p)
+		| (l, `Tcparen):
+		| (l, tokbad):
+		;;
+	| (l, tokbad):
+		err(l, "expected traits after '::', got {}\n", tokbad)
+	;;
+	-> traits
 }
 
 const tystruct = {p, loc
