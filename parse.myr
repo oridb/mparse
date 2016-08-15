@@ -1326,14 +1326,14 @@ const traitlist = {p
 			| `std.None:	err(p.loc, "expected name in trait list\n")
 			;;
 
-			match toknext(p)
-			| (l, `Tcomma):	/* ok */
+			match tokpeek(p)
+			| (l, `Tcomma):	toknext(p)
 			| (l, _):	break
 			;;
 		;;
 		match toknext(p)
 		| (l, `Tcparen):
-		| (l, tokbad):
+		| (l, tokbad):	err(l, "expected ')' ending trat list, got {}\n", tokbad)
 		;;
 	| (l, tokbad):
 		err(l, "expected traits after '::', got {}\n", tokbad)
