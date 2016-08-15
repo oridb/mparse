@@ -835,7 +835,6 @@ const funcexpr = {p, loc
 	/* opening { already consumed */
 	var args, blk, st, ty
 	var fn
-	var stkst, i
 
 	args = [][:]
 	st = mkstab(`std.Some p.curstab)
