@@ -1,6 +1,6 @@
 use std
 
-use "types.use"
+use "types"
 
 pkg mparse =
 	const ifmt	: (sb : std.strbuf#, ind : int, fmt : byte[:], args : ... -> void)

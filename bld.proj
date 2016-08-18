@@ -4,13 +4,12 @@ bin dumpast {noinst} =
 ;;
 
 lib mparse =
-	ast.myr
 	dump.myr
+	errors.myr
 	node.myr
 	parse.myr
 	stab.myr
 	tok.myr
 	tokdefs.myr
 	types.myr
-	util.myr
 ;;

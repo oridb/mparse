@@ -1,8 +1,8 @@
 use std
 
-use "types.use"
-use "tokdefs.use"
-use "util.use"
+use "errors"
+use "types"
+use "tokdefs"
 
 pkg mparse =
 	const tokinit	: (path : byte[:]	-> parser#)

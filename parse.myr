@@ -1,12 +1,11 @@
 use std
 
-use "ast"
+use "errors"
+use "node"
 use "stab"
 use "tok"
 use "tokdefs"
 use "types"
-use "node"
-use "util"
 
 pkg mparse =
 	const tsfile	: (p : parser# -> file#)
