@@ -2,7 +2,7 @@ use std
 
 use "types"
 
-pkg parse =
+pkg mparse =
 	/* expr nodes */
 	const mkexpr	: (l : srcloc, e : exprop -> expr#)
 	const mkblk	: (l : srcloc, st : stab#, stmts : stmt#[:] -> block#)

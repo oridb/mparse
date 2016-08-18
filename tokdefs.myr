@@ -1,6 +1,6 @@
 use std
 
-pkg parse =
+pkg mparse =
 	type tok = union
 		`Terror
 		`Teof

@@ -4,7 +4,7 @@ use "types.use"
 use "tokdefs.use"
 use "util.use"
 
-pkg parse =
+pkg mparse =
 	const tokinit	: (path : byte[:]	-> parser#)
 	const tokinitf	: (fd : std.fd, path : byte[:]	-> parser#)
 	const tokclose	: (ts : parser#	-> void)

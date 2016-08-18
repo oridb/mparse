@@ -2,7 +2,7 @@ use std
 
 use "tokdefs"
 
-pkg parse =
+pkg mparse =
 	type parser = struct
 		/* tokenizer state */
 		last	: std.option((srcloc, tok))

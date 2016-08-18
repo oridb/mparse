@@ -2,7 +2,7 @@ use std
 
 use "types.use"
 
-pkg parse =
+pkg mparse =
 	const ifmt	: (sb : std.strbuf#, ind : int, fmt : byte[:], args : ... -> void)
 	$noret const err	: (loc : srcloc, msg : byte[:], args : ... -> void)
 	$noret const verr	: (loc : srcloc, msg : byte[:], args : std.valist# -> void)

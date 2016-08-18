@@ -3,7 +3,7 @@ use std
 use "types.use"
 use "util.use"
 
-pkg parse =
+pkg mparse =
 ;;
 
 const __init__ = {

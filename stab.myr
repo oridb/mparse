@@ -5,7 +5,7 @@ use "tokdefs.use"
 use "tok.use"
 use "util.use"
 
-pkg parse =
+pkg mparse =
 	const setpkg	: (f : file#, st : stab#, name : byte[:]-> void)
 	const mkstab	: (super : std.option(stab#) -> stab#)
 	const pushstab	: (p : parser#, st : stab# -> void)

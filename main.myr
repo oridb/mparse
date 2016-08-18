@@ -1,8 +1,6 @@
 use std
 
-use "tok.use"
-use "parse.use"
-use "dump.use"
+use mparse
 
 const main = {args
 	var ts, cmd
@@ -12,11 +10,11 @@ const main = {args
 	])
 
 	if cmd.args.len == 0
-		ts = parse.tokinitf(0, "stdin")
+		ts = mparse.tokinitf(0, "stdin")
 		dump(ts)
 	else
 		for arg in cmd.args
-			ts = parse.tokinit(arg)
+			ts = mparse.tokinit(arg)
 			dump(ts)
 		;;
 	;;
@@ -25,7 +23,6 @@ const main = {args
 const dump = {ts
 	var f
 
-	f = parse.tsfile(ts)
-	std.put("parsed\n")
+	f = mparse.tsfile(ts)
 	std.put("{}\n", f)
 }

@@ -8,7 +8,7 @@ use "types"
 use "node"
 use "util"
 
-pkg parse =
+pkg mparse =
 	const tsfile	: (p : parser# -> file#)
 ;;
 

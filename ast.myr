@@ -5,6 +5,6 @@ use "tokdefs.use"
 use "tok.use"
 use "util.use"
 
-pkg parse =
+pkg mparse =
 ;;
 

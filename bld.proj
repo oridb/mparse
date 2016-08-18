@@ -1,7 +1,11 @@
 bin dumpast {noinst} =
+	main.myr
+	lib mparse
+;;
+
+lib mparse =
 	ast.myr
 	dump.myr
-	main.myr
 	node.myr
 	parse.myr
 	stab.myr
