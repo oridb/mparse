@@ -12,7 +12,7 @@ pkg mparse =
 	const mkloop	: (l : srcloc, init : expr#, cond : expr#, step : expr#, body : block# -> loopstmt#)
 	const mkiter	: (l : srcloc, pat : expr#,  seq : expr#, bodk : block# -> iterstmt#)
 	const mkmatch	: (l : srcloc, val : expr#, cases : matchcase[:] -> matchstmt#)
-	const mktraitdef	: (l : srcloc, name : name, ty : tydef#, auxty : tydef#[:], funcs : dcl#[:] -> traitdef#)
+	const mktraitdef	: (l : srcloc, name : name, ty : tydef#, auxty : tydef#[:], dcls : dcl#[:] -> traitdef#)
 
 	/* type nodes */
 	const mktyvar	: (l : srcloc -> tydef#)
@@ -85,14 +85,14 @@ const mkmatch = {l, val, cases
 	])
 }
 
-const mktraitdef = {l, name, ty, auxty, funcs
+const mktraitdef = {l, name, ty, auxty, dcls 
 	-> std.mk([
 		.id=ntraits++,
 		.loc=l,
 		.name=name,
 		.param=ty,
 		.aux=auxty,
-		.funcs=funcs,
+		.dcls=dcls,
 	])
 }
 

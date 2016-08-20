@@ -262,7 +262,7 @@ pkg mparse =
 		name	: name
 		param	: tydef#
 		aux	: tydef#[:]
-		funcs	: dcl#[:]
+		dcls	: dcl#[:]
 	;;
 
 	type usefile = union

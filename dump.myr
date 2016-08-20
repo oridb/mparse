@@ -13,6 +13,7 @@ const __init__ = {
 	var e : expr
 	var name : name
 	var ty : tydef
+	var tr : traitdef
 	var lit : lit
 	var fn : func
 	var blk : block
@@ -24,6 +25,7 @@ const __init__ = {
 	std.fmtinstall(std.typeof(&st), fmtstab, [][:])
 	std.fmtinstall(std.typeof(name), fmtname, [][:])
 	std.fmtinstall(std.typeof(&ty), fmttydef, [][:])
+	std.fmtinstall(std.typeof(&tr), fmttraitdef, [][:])
 	std.fmtinstall(std.typeof(&fn), fmtfn, [][:])
 	std.fmtinstall(std.typeof(&blk), fmtblk, [][:])
 	std.fmtinstall(std.typeof(lit), fmtlit, [][:])
@@ -66,6 +68,13 @@ const fmttydef = {sb, ap, opts
 
 	ty = std.vanext(ap)
 	tydefdump(sb, ty)
+}
+
+const fmttraitdef = {sb, ap, opts
+	var ty : traitdef#
+
+	ty = std.vanext(ap)
+	traitdefdump(sb, 0, ty, false)
 }
 
 const fmtlit = {sb, ap, opts
@@ -224,9 +233,9 @@ const stabdump = {sb, st, ind
 	for k in keys
 		match std.get(std.htget(st.types, k))
 		| `Tyfwd _:	ifmt(sb, ind + 1, "type {} [PROTO]\n", k)
-		| `Trfwd _:	ifmt(sb, ind + 1, "trait {} [PROTO]\n", k)
 		| `Tydef d:	ifmt(sb, ind + 1, "type {} = {}\n", k, d)
-		| `Trdef tr:	ifmt(sb, ind + 1, "trait {} = ...\n", k)
+		| `Trfwd tr:	traitdefdump(sb, ind + 1, tr, true)
+		| `Trdef tr:	traitdefdump(sb, ind + 1, tr, false)
 		;;
 	;;
 	std.slfree(keys)
@@ -277,9 +286,49 @@ const tydefdump = {sb, ty
 	| `Tygeneric (n, args, sub):	nameddump(sb, [.ns="", .name=n], args)
 	| `Tyname (n, args, sub):	nameddump(sb, n, args)
 	| `Tyunres (n, args):	nameddump(sb, n, args)
-	| `Typaram n:	std.sbfmt(sb, "@{}", n)
+	| `Typaram (n, tr):	typaramdump(sb, n, tr)
 	| `Tyvar id:	std.sbfmt(sb, "${}", id)
 	;;
+}
+
+const typaramdump = {sb, n, tr
+	var sep
+
+	std.sbfmt(sb, "@{}", n)
+	if tr.len == 1
+		std.sbfmt(sb, "::{}", tr[0])
+	elif tr.len > 1
+		sep = "::("
+		for t in tr
+			std.sbfmt(sb, "{}{}", sep, t)
+		;;
+		std.sbfmt(sb, ")")
+	;;
+}
+
+const traitdefdump = {sb, ind, tr, isproto
+	var sep
+
+	ifmt(sb, ind, "trait {} {}", tr.name, tr.param)
+	if tr.aux.len > 0
+		std.sbfmt(sb, " ->")
+		sep = " "
+		for aux in tr.aux
+			std.sbfmt(sb, "{}{}", sep, aux)
+			sep = ", "
+		;;
+	;;
+
+	if isproto
+		-> void
+	else
+		std.sbfmt(sb, " =\n")
+	;;
+
+	for dcl in tr.dcls
+		dcldump(sb, dcl, ind + 1)
+	;;
+	ifmt(sb, ind, ";;\n")
 }
 
 const parendump = {sb, args, ret
