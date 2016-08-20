@@ -390,8 +390,6 @@ const stmtdump = {sb, stmt, ind
 	| &(`Nif s):	ifdump(sb, s, ind)
 	| &(`Nmatch s):	matchdump(sb, s, ind)
 	| &(`Ndcl s):	dcldump(sb, s, ind)
-	| &(`Ntrait s):	std.fatal("trait not yet implemented\n")
-	| &(`Nimpl s):	std.fatal("impl not yet implemented\n")
 	;;
 }
 

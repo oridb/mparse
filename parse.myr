@@ -8,11 +8,11 @@ use "tokdefs"
 use "types"
 
 pkg mparse =
-	const tsfile	: (p : parser# -> file#)
+	const file	: (p : parser# -> file#)
 ;;
 
 
-const tsfile = {p
+const file = {p
 	var f
 	var t : tok
 	var vis : vis = `Visintern
@@ -141,6 +141,7 @@ const traitdef = {p
 		funcs = traitbody(p)
 		tr = mktraitdef(loc, trname, ty, auxty, funcs)
 		puttraitfwd(p.curstab, trname, tr)
+		endblk(p, "trait definition")
 	| (l, _):
 		tr =mktraitdef(loc, trname, ty, auxty, [][:]) 
 		puttraitfwd(p.curstab, trname, tr)
@@ -148,8 +149,45 @@ const traitdef = {p
 }
 
 const traitbody = {p
-	std.fatal("trait body not implmented")
-	-> [][:]
+	var nam, ty
+	var dcl, dcls
+
+	dcls = [][:]
+	optendlns(p)
+	while true
+		match tokpeek(p)
+		| (l, `Tident n):
+			nam = n
+			toknext(p)
+		| (l, _):
+			break
+		;;
+
+		match toknext(p)
+		| (l, `Tcolon):	/* ok */
+		| (l, tokbad):	err(l, "expected ':' after trait decl, got {}\n", tokbad)
+		;;
+
+		match typ(p)
+		| `std.Some t:	ty = t
+		| `std.None:	err(p.loc, "expected type after ':' in decl near {}\n", tokpeek(p))
+		;;
+
+		dcl = std.mk([
+			.loc = p.loc,
+			.id = p.file.dcls.len,
+			.vis = p.curvis,
+			.init = `std.None,
+			.tr = `std.None,
+			.isglobl = true,
+			.isconst = true,
+			.isgeneric = true,
+		])
+		std.slpush(&dcls, dcl)
+		endlns(p)
+	;;
+	-> dcls
+
 }
 
 const auxlist = {p
@@ -1176,22 +1214,6 @@ const typestmt = {p
 	-> `std.None
 }
 
-const traitstmt = {p
-	match tokpeek(p)
-	| (l, `Ttrait):	toknext(p)
-	| (l, _):	-> `std.None
-	;;
-	-> `std.None
-}
-
-const implstmt = {p
-	match tokpeek(p)
-	| (l, `Timpl):	toknext(p)
-	| (l, _):	-> `std.None
-	;;
-	-> `std.None
-}
-
 const blkbody = {p, st
 	var stmts, found
 
@@ -1242,14 +1264,6 @@ const stmt = {p
 	;;
 	match matchstmt(p)
 	| `std.Some e:	-> `std.Some mkstmt(loc, `Nmatch e)
-	| `std.None:	/* nothing */
-	;;
-	match traitstmt(p)
-	| `std.Some e:	-> `std.Some mkstmt(loc, `Ntrait e)
-	| `std.None:	/* nothing */
-	;;
-	match implstmt(p)
-	| `std.Some e:	-> `std.Some mkstmt(loc, `Nimpl e)
 	| `std.None:	/* nothing */
 	;;
 	match typestmt(p)

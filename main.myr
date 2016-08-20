@@ -3,26 +3,26 @@ use std
 use mparse
 
 const main = {args
-	var ts, cmd
+	var p, cmd
 
 	cmd = std.optparse(args, &[
 		.argdesc="files..."
 	])
 
 	if cmd.args.len == 0
-		ts = mparse.tokinitf(0, "stdin")
-		dump(ts)
+		p = mparse.tokinitf(0, "stdin")
+		dump(p)
 	else
 		for arg in cmd.args
-			ts = mparse.tokinit(arg)
-			dump(ts)
+			p = mparse.tokinit(arg)
+			dump(p)
 		;;
 	;;
 }
 
-const dump = {ts
+const dump = {p
 	var f
 
-	f = mparse.tsfile(ts)
+	f = mparse.file(p)
 	std.put("{}\n", f)
 }

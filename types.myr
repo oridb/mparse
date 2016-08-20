@@ -13,6 +13,7 @@ pkg mparse =
 
 		/* parser state */
 		curns	: byte[:]
+		curvis	: vis
 		stabstk	: stab#[:]
 		curstab	: stab#
 		file	: file#
@@ -55,8 +56,6 @@ pkg mparse =
 		`Nif	ifstmt#
 		`Nmatch matchstmt#
 		`Ndcl	dcl#
-		`Ntrait traitdef#
-		`Nimpl	impldef#
 	;;
 
 	type tydef = struct
