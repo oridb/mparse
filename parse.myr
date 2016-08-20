@@ -194,8 +194,21 @@ const traitbody = {p
 }
 
 const auxlist = {p
-	std.fatal("trait aux types not implmented")
-	-> [][:]
+	var aux
+
+	aux = [][:]
+	while true
+		match typ(p)
+		| `std.Some ty:	std.slpush(&aux, ty)
+		| `std.None:	err(p.loc, "expected type in trait aux list near {}\n", tokpeek(p))
+		;;
+
+		match tokpeek(p)
+		| (l, `Tcomma):	toknext(p)
+		| (l, _):	break
+		;;
+	;;
+	-> aux
 }
 
 const tydefn = {p
