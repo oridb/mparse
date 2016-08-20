@@ -61,7 +61,7 @@ pkg mparse =
 
 	type tydef = struct
 		ty	: ty
-		id	: int64
+		id	: int32
 		loc	: srcloc
 		fixed	: bool
 		found	: bool
@@ -103,7 +103,7 @@ pkg mparse =
 		`Tyname	(name, tydef#[:], tydef#)
 		`Tyunres	(name, tydef#[:])
 		`Typaram (byte[:], name[:])
-		`Tyvar int64
+		`Tyvar int32
 	;;
 
 	type ucon = struct
@@ -259,11 +259,10 @@ pkg mparse =
 	type traitdef = struct
 		id	: int32
 		loc	: srcloc
-		vis	: vis
+	//	vis	: vis
 		name	: name
 		param	: tydef#
 		aux	: tydef#[:]
-		memb	: dcl#[:]
 		funcs	: dcl#[:]
 	;;
 
@@ -298,8 +297,9 @@ pkg mparse =
 
 	type tysym = union
 		`Tyfwd	srcloc
-		`Trfwd	srcloc
 		`Tydef	tydef#
+
+		`Trfwd	traitdef#
 		`Trdef	traitdef#
 	;;
 

@@ -106,7 +106,55 @@ const pkgdef = {f, p
 }
 
 const traitdef = {p
-	std.fatal("unimplemented trait\n")
+	var loc, trname, ty, auxty, funcs
+	var tr
+
+	match tokpeek(p)
+	| (l, `Ttrait):
+		toknext(p)
+		loc = l
+	| (l, tokbad):
+		err(l, "expected 'trait' in trait def\n")
+	;;
+
+	match name(p)
+	| `std.Some n:	trname = n
+	| `std.None:
+	;;
+
+	match typaram(p)
+	| `std.Some t:	ty = t
+	| `std.None:	err(p.loc, "expected type parameter after 'trait {}\n", trname)
+	;;
+
+	match tokpeek(p)
+	| (l, `Tret):
+		toknext(p)
+		auxty = auxlist(p)
+	| _:
+		auxty = [][:]
+	;;
+
+	match tokpeek(p)
+	| (l, `Tasn):
+		toknext(p)
+		funcs = traitbody(p)
+		tr = mktraitdef(loc, trname, ty, auxty, funcs)
+		puttraitfwd(p.curstab, trname, tr)
+	| (l, _):
+		tr =mktraitdef(loc, trname, ty, auxty, [][:]) 
+		puttraitfwd(p.curstab, trname, tr)
+	;;
+}
+
+const traitbody = {p
+	std.fatal("trait body not implmented")
+	-> [][:]
+}
+
+const auxlist = {p
+	std.fatal("trait aux types not implmented")
+	-> [][:]
 }
 
 const tydefn = {p
@@ -1280,9 +1328,9 @@ const typ = {p
 	| (l, `Tstruct):	ty = tystruct(p, l)
 	| (l, `Tunion):		ty = tyunion(p, l)
 	| (l, `Toparen):	ty = typaren(p, l)
-	| (l, `Ttyparam n):	ty = typaram(p, l, n)
 	| (l, `Tellipsis):	ty = mkty(l, `Tyvalist)
 	| (l, `Tvoidlit):	ty = mkty(l, `Tyvoid)
+	| (l, `Ttyparam n):	ty = typaramtail(p, l, n)
 	| (l, `Tident id):
 		tokunget(p)
 		ty = tyname(p)
@@ -1294,7 +1342,17 @@ const typ = {p
 	-> `std.Some tysuffixed(p, ty)
 }
 
-const typaram = {p, loc, name
+const typaram = {p
+	match tokpeek(p)
+	| (l, `Ttyparam n):
+		toknext(p)
+		-> `std.Some typaramtail(p, l, n)
+	| (l, _):
+		-> `std.None
+	;;
+}
+
+const typaramtail = {p, loc, name
 	var traits
 
 	traits = [][:]

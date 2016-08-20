@@ -13,8 +13,12 @@ pkg mparse =
 
 	const putdcl	: (st : stab#, name : name, sym : dcl# -> void)
 	const putucon	: (st : stab#, name : name, sym : ucon# -> void)
-	const puttype	: (st : stab#, name : name, sym : tydef# -> void)
+
+	const puttype	: (st : stab#, name : name, ty : tydef# -> void)
 	const puttypefwd	: (st : stab#, name : name, loc : srcloc -> void)
+
+	const puttrait	: (st : stab#, name : name, tr : traitdef# -> void)
+	const puttraitfwd	: (st : stab#, name : name, tr : traitdef# -> void)
 ;;
 
 const mkstab = {super
@@ -62,7 +66,6 @@ const putdcl = {st, n, sym
 }
 
 const putucon = {st, n, uc
-	std.assert(std.streq(st.ns, n.ns), "sym name mismatches stab name\n")
 	match std.htget(st.syms, n)
 	| `std.Some `Dcl d:	err(uc.loc, "duplicate declaration of {}, first declared on {}\n", n, d.loc)
 	| `std.Some `Ucon u:	err(uc.loc, "duplicate declaration of {}, first declared on {}\n", n, u.loc)
@@ -72,7 +75,6 @@ const putucon = {st, n, uc
 }
 
 const puttype = {st, n, ty
-	std.assert(std.streq(st.ns, n.ns), "sym name mismatches stab name\n")
 	match std.htget(st.types, n)
 	| `std.Some `Tyfwd _:	/* everything is fine */
 	| `std.Some `Trfwd l:	err(ty.loc, "{} initially declared as trait on {}\n", n, l)
@@ -83,16 +85,39 @@ const puttype = {st, n, ty
 	std.htput(st.types, n, `Tydef ty)
 }
 
-const puttypefwd = {st, n, loc
-	std.assert(std.streq(st.ns, n.ns), "sym name mismatches stab name\n")
+const puttypefwd = {st, n : name, loc
 	match std.htget(st.types, n)
 	| `std.Some `Tyfwd _:	/* everything is fine */
 	| `std.Some `Tydef t:	/* everything is fine, although a bit weird to get a fwd after a def */
-	| `std.Some `Trfwd l:	err(loc, "{} initially declared as trait on {}\n", n, l)
-	| `std.Some `Trdef t:	err(loc, "duplicate declaration of {}, first declared on {}\n", n, t.loc)
+	| `std.Some `Trfwd t:	err(loc, "{} initially declared as trait on {}\n", n, t.loc)
+	| `std.Some `Trdef t:	err(loc, "{}, initially declared as trait on {}\n", n, t.loc)
 	| `std.None:	/* everything is fine */
 	;;
 	std.htput(st.types, n, `Tyfwd loc)
+}
+
+
+const puttrait = {st, n, tr
+	match std.htget(st.types, n)
+	| `std.Some `Tyfwd l:	err(tr.loc, "{} initially declared as type on {}\n", n, l)
+	| `std.Some `Trfwd _:	/* everything is fine */
+	| `std.Some `Tydef t:	err(tr.loc, "duplicate declaration of {}, first declared on {}\n", n, t.loc)
+	| `std.Some `Trdef t:	err(tr.loc, "duplicate declaration of {}, first declared on {}\n", n, t.loc)
+	| `std.None:	/* everything is fine */
+	;;
+	std.htput(st.types, n, `Trdef tr)
+}
+
+const puttraitfwd = {st, n, tr
+	std.assert(std.streq(st.ns, n.ns), "sym name mismatches stab name\n")
+	match std.htget(st.types, n)
+	| `std.Some `Tyfwd l:	err(tr.loc, "{} initially declared as type on {}\n", n, l)
+	| `std.Some `Tydef t:	err(tr.loc, "{} initially declared as type on }\n", n, t.loc)
+	| `std.Some `Trfwd _:	/* everything is fine */
+	| `std.Some `Trdef t:	/* everything is fine, although a bit weird to get a fwd after a def */
+	| `std.None:	/* everything is fine */
+	;;
+	std.htput(st.types, n, `Trfwd tr)
 }
 
 const mergedcl = {old, new
