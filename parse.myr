@@ -140,7 +140,7 @@ const traitdef = {p
 		toknext(p)
 		funcs = traitbody(p)
 		tr = mktraitdef(loc, trname, ty, auxty, funcs)
-		puttraitfwd(p.curstab, trname, tr)
+		puttrait(p.curstab, trname, tr)
 		endblk(p, "trait definition")
 	| (l, _):
 		tr =mktraitdef(loc, trname, ty, auxty, [][:]) 
