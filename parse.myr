@@ -1581,15 +1581,15 @@ const typaren = {p, loc
 		| `std.None:	std.die("impossible: failed name after ident\n")
 		| `std.Some nam:
 			match tokpeek(p)
+			| (l, `Tret):	err(l, "expected ': type' after function argument name\n")
 			| (l, `Tcolon):	-> functype(p, loc, `std.Some nam)
-			| (l, `Tret):	-> functype(p, loc, `std.Some nam)
 			| (l, _):	-> tupletype(p, loc, `std.Some nam)
 			;;
 		;;
 	| (l, `Tret):
 		-> functype(p, l, `std.None)
-	| (l, tokbad):
-		err(l, "expected name or '->' after '(' in type\n")
+	| (l, _):
+		-> tupletype(p, loc, `std.None)
 	;;
 }
 
