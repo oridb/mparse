@@ -113,8 +113,9 @@ pkg mparse =
 	;;
 
 	type impldef = struct
+		loc	: srcloc
 		vis	: vis
-		tr	: name
+		name	: name
 		ty	: tydef#
 		aux	: tydef#[:]
 		dcls	: dcl#[:]

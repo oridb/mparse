@@ -41,6 +41,7 @@ const file = {p
 		| (l, `Tuse):	usestmt(p)
 		| (l, `Tpkg):	pkgdef(f, p)
 		| (l, `Ttrait):	traitdef(p)
+		| (l, `Timpl):	impldef(p)
 		| (l, `Ttype):	tydefn(p)
 		| (l, `Tendln):	endlns(p)
 		| (l, tok):	
@@ -93,13 +94,14 @@ const pkgdef = {f, p
 		| (l, `Tuse):	usestmt(p)
 		| (l, `Ttrait):	traitdef(p)
 		| (l, `Ttype):	tydefn(p)
+		| (l, `Timpl):	impldef(p)
 		| (l, `Tendblk):
 			toknext(p)
 			break
 		| (l, tok):	
 			match vardcls(p, true, `Visexport)
 			| `std.Some d:	std.slfree(d)
-			| `std.None:	err(l, "invalid pkg export near {}\n", tok)
+			| `std.None:	err(l, "invalid export in package near {}\n", tok)
 			;;
 		;;
 	;;
@@ -179,6 +181,105 @@ const traitbody = {p
 			.name = [.ns="", .name=nam],
 			.ty = ty,
 			.init = `std.None,
+			.vis = p.curvis,
+			.tr = `std.None,
+			.isglobl = true,
+			.isconst = true,
+			.isgeneric = true,
+		])
+		std.slpush(&p.file.dcls, dcl)
+		std.slpush(&dcls, dcl)
+		endlns(p)
+	;;
+	-> dcls
+
+}
+
+const impldef = {p
+	var loc, implname, ty, auxty, dcls
+	var tr
+
+	match tokpeek(p)
+	| (l, `Timpl):
+		toknext(p)
+		loc = l
+	| (l, tokbad):
+		err(l, "expected 'impl' in impl def\n")
+	;;
+
+	match name(p)
+	| `std.Some n:	implname = n
+	| `std.None:
+	;;
+
+	match typ(p)
+	| `std.Some t:	ty = t
+	| `std.None:	err(p.loc, "expected type parameter after 'impl {}'\n", implname)
+	;;
+
+	match tokpeek(p)
+	| (l, `Tret):
+		toknext(p)
+		auxty = tylist(p)
+	| _:
+		auxty = [][:]
+	;;
+
+	match tokpeek(p)
+	| (l, `Tasn):
+		toknext(p)
+		dcls = implbody(p)
+		tr = mkimpldef(loc, implname, ty, auxty, dcls)
+		//putimpl(p.curstab, implname, tr)
+		endblk(p, "impl definition")
+	| (l, _):
+		tr =mkimpldef(loc, implname, ty, auxty, [][:]) 
+		//putimplfwd(p.curstab, implname, tr)
+	;;
+}
+
+const implbody = {p
+	var nam, ty, init
+	var dcl, dcls
+
+	dcls = [][:]
+	optendlns(p)
+	while true
+		match tokpeek(p)
+		| (l, `Tident n):
+			nam = n
+			toknext(p)
+		| (l, _):
+			break
+		;;
+
+		match tokpeek(p)
+		| (l, `Tcolon):
+			toknext(p);
+			match typ(p)
+			| `std.Some t:	ty = t
+			| `std.None:	err(p.loc, "expected type after ':'\n")
+			;;
+		| (l, _):
+			ty = mktyvar(l)
+		;;
+
+		match toknext(p)
+		| (l, `Tasn):	/* ok */
+		| (l, tokbad):	err(l, "expected '=' after impl, got {}\n", tokbad)
+		;;
+
+		match expr(p)
+		| `std.Some e:	init = e
+		| `std.None:	err(p.loc, "expected expression after '=' in decl near {}\n", tokpeek(p))
+		;;
+
+		dcl = std.mk([
+			.id = p.file.dcls.len,
+			.loc = p.loc,
+			.name = [.ns="", .name=nam],
+			.ty = ty,
+			.init = `std.Some init,
 			.vis = p.curvis,
 			.tr = `std.None,
 			.isglobl = true,
