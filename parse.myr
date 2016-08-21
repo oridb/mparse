@@ -130,7 +130,7 @@ const traitdef = {p
 	match tokpeek(p)
 	| (l, `Tret):
 		toknext(p)
-		auxty = auxlist(p)
+		auxty = tylist(p)
 	| _:
 		auxty = [][:]
 	;;
@@ -193,24 +193,6 @@ const traitbody = {p
 
 }
 
-const auxlist = {p
-	var aux
-
-	aux = [][:]
-	while true
-		match typ(p)
-		| `std.Some ty:	std.slpush(&aux, ty)
-		| `std.None:	err(p.loc, "expected type in trait aux list near {}\n", tokpeek(p))
-		;;
-
-		match tokpeek(p)
-		| (l, `Tcomma):	toknext(p)
-		| (l, _):	break
-		;;
-	;;
-	-> aux
-}
-
 const tydefn = {p
 	var name, loc, params : tydef#[:], ty
 
@@ -226,7 +208,13 @@ const tydefn = {p
 
 	params = [][:]
 	match tokpeek(p)
-	| (l, `Toparen):	params = typarams(p)
+	| (_, `Toparen):
+		toknext(p)
+		params = tylist(p)
+		match toknext(p)
+		| (l, `Tcparen):
+		| (l, tokbad):	err(l, "expected ')' after type params, got {}\n", tokbad)
+		;;
 	| _:	/* nothing */
 	;;
 
@@ -248,9 +236,22 @@ const tydefn = {p
 	;;
 }
 
-const typarams = {p
-	std.fatal("typarams not implemented\n")
-	-> std.slalloc(0)
+const tylist = {p
+	var aux
+
+	aux = [][:]
+	while true
+		match typ(p)
+		| `std.Some ty:	std.slpush(&aux, ty)
+		| `std.None:	err(p.loc, "expected type in trait aux list near {}\n", tokpeek(p))
+		;;
+
+		match tokpeek(p)
+		| (l, `Tcomma):	toknext(p)
+		| (l, _):	break
+		;;
+	;;
+	-> aux
 }
 
 const vardcls = {p, isglobl, vis
