@@ -4,25 +4,39 @@ use mparse
 
 const main = {args
 	var p, cmd
+	var infer
 
 	cmd = std.optparse(args, &[
-		.argdesc="files..."
+		.argdesc="files...",
+		.opts = [
+			[.opt='n', .desc="no type inference"],
+		][:]
 	])
 
+	infer = true
+	for o in cmd.opts
+		match o
+		| ('n', ""):	infer = false
+		| _:	std.die("unreachable")
+		;;
+	;;
 	if cmd.args.len == 0
 		p = mparse.tokinitf(0, "stdin")
-		dump(p)
+		dump(p, infer)
 	else
 		for arg in cmd.args
 			p = mparse.tokinit(arg)
-			dump(p)
+			dump(p, infer)
 		;;
 	;;
 }
 
-const dump = {p
+const dump = {p, infer
 	var f
 
 	f = mparse.file(p)
+	if infer
+		mparse.infer(p, f)
+	;;
 	std.put("{}\n", f)
 }

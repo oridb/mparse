@@ -6,6 +6,7 @@ bin dumpast {noinst} =
 lib mparse =
 	dump.myr
 	errors.myr
+	infer.myr
 	node.myr
 	parse.myr
 	stab.myr

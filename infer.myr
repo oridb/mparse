@@ -1,0 +1,16 @@
+use std
+
+use "errors"
+use "node"
+use "stab"
+use "tok"
+use "tokdefs"
+use "types"
+
+pkg mparse =
+	const infer	: (p : parser#, f : file# -> void)
+;;
+
+const infer = {p, f
+}
+
