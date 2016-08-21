@@ -782,7 +782,6 @@ const sizeofexpr = {p, loc
 const parenexpr = {p, loc
 	var exprs, ret, ty
 	var istup, iscast
-	var loc
 	
 	/* opening ( already consumed */
 	istup = false
@@ -1448,8 +1447,7 @@ const tystruct = {p, loc
 }
 
 const dclcore = {p
-	var dcl
-	var nam
+	var dcl, nam
 
 	match toknext(p)
 	| (l, `Tident n):
@@ -1462,6 +1460,7 @@ const dclcore = {p
 	/* attributes */
 	dcl = std.mk([
 		.id = p.file.dcls.len,
+		.name = [.ns="", .name=nam],
 		.vis = `Visintern,
 		.init = `std.None,
 		.tr = `std.None,
