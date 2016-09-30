@@ -16,13 +16,20 @@ pkg mparse =
 	const mkimpldef	: (l : srcloc, name : name, ty : tydef#, auxty : tydef#[:], dcls : dcl#[:] -> impldef#)
 
 	/* type nodes */
+	const mkname	: (name : name, params : tydef#[:] -> tyname#)
 	const mktyvar	: (l : srcloc -> tydef#)
 	const mkty	: (l : srcloc, ty : ty -> tydef#)
+
+	/* globals */
+	var types	: tydef#[:]
+	var tymap	: int32[:]
 ;;
 
 /* global state */
 var ntypes	: int32 = 0
 var ntraits	: int32 = 0
+var tymap
+var types
 
 const mkexpr = {l, e
 	-> std.mk([
@@ -112,7 +119,8 @@ const mktyvar = {l
 }
 
 const mkty = {l, ty
-	-> std.mk([
+	var t
+	t = std.mk([
 		.ty = ty,
 		.id = ntypes++,
 		.loc = l,
@@ -120,5 +128,15 @@ const mkty = {l, ty
 		.found = false,
 		.traits = std.mkbs(),
 	])
+	std.slpush(&types, t)
+	std.slpush(&tymap, -1)
+	-> t
 }
 
+
+const mkname = {nam, params
+	-> std.mk([
+		.name=nam,
+		.params=params
+	])
+}

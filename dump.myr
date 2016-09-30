@@ -252,6 +252,7 @@ const namedump = {sb, n
 
 const tydefdump = {sb, ty
 	match ty.ty
+	| `Tynone:	std.sbfmt(sb, "BADTYPE")
 	| `Tyvoid:	std.sbfmt(sb, "void")
 	| `Tybool:	std.sbfmt(sb, "bool")
 	| `Tychar:	std.sbfmt(sb, "char")
@@ -283,11 +284,29 @@ const tydefdump = {sb, ty
 	| `Tytuple args:	parendump(sb, args, `std.None)
 	| `Tyfunc args:		parendump(sb, args[1:], `std.Some args[0])
 	/* user defined types */
-	| `Tygeneric (n, args, sub):	nameddump(sb, [.ns="", .name=n], args)
-	| `Tyname (n, args, sub):	nameddump(sb, n, args)
-	| `Tyunres (n, args):	nameddump(sb, n, args)
+	| `Tyname tn:	tynamedump(sb, tn)
+	| `Tyunres tn:	tynamedump(sb, tn)
 	| `Typaram (n, tr):	typaramdump(sb, n, tr)
 	| `Tyvar id:	std.sbfmt(sb, "${}", id)
+	;;
+}
+
+const tynamedump = {sb, tn
+	var sep, args
+
+	std.sbfmt(sb, "{}", tn.name)
+	args = tn.args
+	if tn.params.len > 0
+		args = tn.params
+	;;
+	if args.len > 0
+		sep = ""
+		std.sbfmt(sb, "(")
+		for p in tn.params
+			std.sbfmt(sb, "{}{}", sep, p)
+			sep = ", "
+		;;
+		std.sbfmt(sb, ")")
 	;;
 }
 
@@ -368,24 +387,6 @@ const uniondump = {sb, ucons
 		std.sbfmt(sb, "`{} {}\n", uc.tag, uc.ety)
 	;;
 	std.sbfmt(sb, ";;")
-}
-
-const nameddump = {sb, n : name, args
-	var sep
-
-	sep = ""
-	if n.ns.len > 0
-		std.sbfmt(sb, "{}.", n.ns)
-	;;
-	std.sbfmt(sb, "{}", n.name)
-	if args.len > 0
-		std.sbfmt(sb, "(")
-		for a in args
-			std.sbfmt(sb, "{}{}", sep, a)
-			sep = ", "
-		;;
-		std.sbfmt(sb, ")")
-	;;
 }
 
 const litdump = {sb, lit, ind

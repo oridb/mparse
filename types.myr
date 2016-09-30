@@ -68,6 +68,7 @@ pkg mparse =
 	;;
 		
 	type ty = union
+		`Tynone
 		`Tyvoid
 		`Tybool
 		`Tychar
@@ -98,11 +99,17 @@ pkg mparse =
 		`Tytuple tydef#[:]
 		`Tyfunc tydef#[:]
 		/* user defined types */
-		`Tygeneric (byte[:], tydef#[:], tydef#)
-		`Tyname	(name, tydef#[:], tydef#)
-		`Tyunres	(name, tydef#[:])
+		`Tyname tyname#
+		`Tyunres tyname#
 		`Typaram (byte[:], name[:])
 		`Tyvar int32
+	;;
+
+	type tyname = struct
+		name	: name
+		params	: tydef#[:]
+		args	: tydef#[:]
+		def	: tydef#
 	;;
 
 	type ucon = struct

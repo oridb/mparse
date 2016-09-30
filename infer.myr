@@ -11,6 +11,226 @@ pkg mparse =
 	const infer	: (p : parser#, f : file# -> void)
 ;;
 
+type inferstate = struct
+	file	: file#
+	debug	: bool
+;;
+
 const infer = {p, f
+	var st : inferstate
+
+	st = [
+		.file = f,
+	]
+
+	for dcl in f.dcls
+		inferdcl(&st, dcl)
+	;;
+}
+
+const inferdcl = {st, dcl
+	match dcl.init
+	| `std.None:
+	| `std.Some init:
+		inferexpr(st, init)
+		unify(st, dcl.ty, init.ty)
+	;;
+}
+
+const inferexpr = {st, e
+	match e
+	| &[.e=`Onop]:	std.fatal("generated nop at {} ({})\n", e.loc, e)
+	| &[.e=`Oadd (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Osub (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Omul (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Odiv (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Omod (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Oneg a]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Obor (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Oband (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Obxor (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Obsl (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Obsr (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Obnot a]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Opreinc a]:	inferincop(st, e, a)
+	| &[.e=`Opostinc a]:	inferincop(st, e, a)
+	| &[.e=`Opredec a]:	inferincop(st, e, a)
+	| &[.e=`Opostdec a]:	inferincop(st, e, a)
+	| &[.e=`Oaddr a]:	inferaddr(st, e, a)
+	| &[.e=`Oderef a]:	inferderef(st, e, a)
+	| &[.e=`Olor (a, b)]:	inferbinlogical(st, e, a, b)
+	| &[.e=`Oland (a, b)]:	inferbinlogical(st, e, a, b)
+	| &[.e=`Olnot a]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Oeq (a, b)]:	inferbinlogical(st, e, a, b)
+	| &[.e=`One (a, b)]:	inferbinlogical(st, e, a, b)
+	| &[.e=`Ogt (a, b)]:	inferbinlogical(st, e, a, b)
+	| &[.e=`Oge (a, b)]:	inferbinlogical(st, e, a, b)
+	| &[.e=`Olt (a, b)]:	inferbinlogical(st, e, a, b)
+	| &[.e=`Ole (a, b)]:	inferbinlogical(st, e, a, b)
+	| &[.e=`Oasn (a, b)]:	inferbinop(st, e, a, b, "")
+	| &[.e=`Oaddeq (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Osubeq (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Omuleq (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Odiveq (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Omodeq (a, b)]:	inferbinop(st, e, a, b, "numeric")
+	| &[.e=`Oboreq (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Obandeq (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Obxoreq (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Obsleq (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Obsreq (a, b)]:	inferbinop(st, e, a, b, "integer")
+	| &[.e=`Oidx (a, b)]:	inferidx(st, e, a, b)
+	| &[.e=`Oslice (a, lo, hi)]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Omemb (a, memb)]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Osize a]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Ocall (a, args)]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Ocast (a, ty)]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Oret a]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Ojmp name]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Obreak]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Ocontinue]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Ovar name]:	infervar(st, name)
+	| &[.e=`Ogap]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Olit lit]:	inferlit(st, lit)
+	| &[.e=`Oucon (name, arg)]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Otup vals]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Ostruct vals]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Oarr vals]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Oidxlen]:	std.fatal("no inference for {}\n", e)
+	;;
+}
+
+const inferbinop = {st, e, a, b, traits
+	inferexpr(st, a)
+	inferexpr(st, b)
+	unify(st, a.ty, b.ty)
+	unify(st, e.ty, a.ty)
+}
+
+const inferincop = {st, e, val
+}
+
+const inferbinlogical = {st, e, a, b
+}
+
+const inferidx = {st, e, base, idx
+}
+
+const inferaddr = {st, e, pointee
+}
+
+const inferderef = {st, e, pointer
+}
+
+const inferlit = {st, l
+}
+
+const infervar = {st, v
+}
+
+const unify = {st, u, v
+	var a, b
+
+	a = tf(st, u)
+	b = tf(st, v)
+
+	if a == b
+		-> a
+	;;
+
+	if tyrank(b) < tyrank(a)
+		std.swap(&a, &b)
+	;;
+
+	if st.debug
+		std.put("unify {} => {}\n", a, b)
+	;;
+
+	if istyvar(a) && !istyvar(b) && occurs(st, a, b)
+		err(a.loc, "{} occurs within {}, leading to infinite type\n")
+	;;
+
+	if istyvar(a) || tyeq(a, b)
+		std.put("mapped {}({}) => {}, len: {}\n", a, a.id, b, tymap.len)
+		tymap[a.id] = b.id
+	;;
+	if istyarray(a) && istyarray(b)
+		checksize(st, a, b)
+	;;
+
+	match (a, b)
+	| (&[.ty=`Tyvoid], &[.ty=`Tyvoid]):	-> a
+	| (&[.ty=`Tybool], &[.ty=`Tybool]):	-> a
+	| (&[.ty=`Tychar], &[.ty=`Tychar]):	-> a
+	| (&[.ty=`Tyint8], &[.ty=`Tyint8]):	-> a
+	| (&[.ty=`Tyint16], &[.ty=`Tyint16]):	-> a
+	| (&[.ty=`Tyint32], &[.ty=`Tyint32]):	-> a
+	| (&[.ty=`Tyint64], &[.ty=`Tyint64]):	-> a
+	| (&[.ty=`Tyint], &[.ty=`Tyint]):	-> a
+	| (&[.ty=`Tybyte], &[.ty=`Tybyte]):	-> a
+	| (&[.ty=`Tyuint8], &[.ty=`Tyuint8]):	-> a
+	| (&[.ty=`Tyuint16], &[.ty=`Tyuint16]):	-> a
+	| (&[.ty=`Tyuint32], &[.ty=`Tyuint32]):	-> a
+	| (&[.ty=`Tyuint], &[.ty=`Tyuint]):	-> a
+	| (&[.ty=`Tyuint64], &[.ty=`Tyuint64]):	-> a
+	| (&[.ty=`Tyflt32], &[.ty=`Tyflt32]):	-> a
+	| (&[.ty=`Tyflt64], &[.ty=`Tyflt64]):	-> a
+	| (&[.ty=`Tyvalist], &[.ty=`Tyvalist]):	-> a
+	| (&[.ty=`Tyvar _], &[.ty=t]):
+	| _:
+		err(a.loc, "type mismatch: {} mismatches with {}\n", a, b)
+	;;
+
+	std.put("unify {} => {}\n", u, v)
+	-> a
+}
+
+const checksize = {st, a, b
+}
+
+const tf = {st, t
+	while true
+		match tymap[t.id]
+		| -1:	-> t
+		| id:	t = types[id]
+		;;
+	;;
+	-> t
+}
+
+const tyrank = {t
+	match (istyvar(t), hastraits(t))
+	| (true, false):	-> 0
+	| (true, true):	-> 1
+	| (false, _):	-> 2
+	;;
+}
+
+const hastraits = {t
+	-> false
+}
+
+const occurs = {st, a, b
+	-> false
+}
+
+const tyeq = {a, b
+	-> false
+}
+
+const istyvar = {t
+	match t
+	| &[.ty=`Tyvar _]:	-> true
+	| _:	-> false
+	;;
+}
+
+const istyarray = {t
+	match t
+	| &[.ty=`Tyarray _]:	-> true
+	| _:	-> false
+	;;
+}
+
+const fix = {
 }
 

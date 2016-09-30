@@ -1741,7 +1741,7 @@ const typaramname = {p, nam
 	| (l, _):
 	;;
 
-	-> mkty(p.loc, `Tyunres (nam, params))
+	-> mkty(p.loc, `Tyunres mkname(nam, params))
 }
 
 const typaramlist = {p

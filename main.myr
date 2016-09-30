@@ -25,7 +25,9 @@ const main = {args
 		dump(p, infer)
 	else
 		for arg in cmd.args
+			std.put("infer: {}\n", infer)
 			p = mparse.tokinit(arg)
+			std.put("infer: {}\n", infer)
 			dump(p, infer)
 		;;
 	;;
