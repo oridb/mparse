@@ -132,6 +132,9 @@ pkg mparse =
 	type expr = struct
 		ty	: tydef#
 		loc	: srcloc
+		/* do we need this? 
+		did	: int32
+		*/
 		e	: exprop
 	;;
 

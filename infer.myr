@@ -12,6 +12,7 @@ pkg mparse =
 ;;
 
 type inferstate = struct
+	parser	: parser#
 	file	: file#
 	debug	: bool
 ;;
@@ -20,15 +21,38 @@ const infer = {p, f
 	var st : inferstate
 
 	st = [
+		.parser = p,
 		.file = f,
 	]
 
 	for dcl in f.dcls
 		inferdcl(&st, dcl)
 	;;
+	for dcl in f.dcls
+		fix(&st, dcl)
+	;;
+}
+
+
+const fix = {st, dcl
+	match dcl.init
+	| `std.None:	
+		dcl.ty = tyfix(st, dcl.ty)
+	| `std.Some init:
+		exprfix(st, init)
+		dcl.ty = tyfix(st, dcl.ty)
+	;;
+}
+
+const exprfix = {st, e
+}
+
+const tyfix = {st, ty
+	-> tf(st, ty)
 }
 
 const inferdcl = {st, dcl
+	std.put("~~ inferring {} --\n", dcl.name)
 	match dcl.init
 	| `std.None:
 	| `std.Some init:
@@ -38,6 +62,7 @@ const inferdcl = {st, dcl
 }
 
 const inferexpr = {st, e
+	e = checkns(st, e)
 	match e
 	| &[.e=`Onop]:	std.fatal("generated nop at {} ({})\n", e.loc, e)
 	| &[.e=`Oadd (a, b)]:	inferbinop(st, e, a, b, "numeric")
@@ -88,7 +113,7 @@ const inferexpr = {st, e
 	| &[.e=`Ojmp name]:	std.fatal("no inference for {}\n", e)
 	| &[.e=`Obreak]:	std.fatal("no inference for {}\n", e)
 	| &[.e=`Ocontinue]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Ovar name]:	infervar(st, name)
+	| &[.e=`Ovar _]:	/* already dealt in checkns */
 	| &[.e=`Ogap]:	std.fatal("no inference for {}\n", e)
 	| &[.e=`Olit lit]:	inferlit(st, lit)
 	| &[.e=`Oucon (name, arg)]:	std.fatal("no inference for {}\n", e)
@@ -97,6 +122,61 @@ const inferexpr = {st, e
 	| &[.e=`Oarr vals]:	std.fatal("no inference for {}\n", e)
 	| &[.e=`Oidxlen]:	std.fatal("no inference for {}\n", e)
 	;;
+}
+
+const checkns = {st, e
+	var ns, name
+
+	/*
+	if this is in the form of 'ident.memb', rather than
+	'(complex + expr).name', this could be a namespace
+	lookup. Pull out the possible-namespace and member.
+	*/
+	match e
+	| &[.e=`Omemb (base, memb)]:
+		match base
+		| &[.e=`Ovar n]:
+			ns = n.name
+			name = memb
+		| _:
+			-> e
+		;;
+	| &[.e=`Ovar [.ns="", .name=nam]]:
+		if std.hthas(st.file.ns, nam)
+			err(e.loc, "variable {} shadows namespace\n", nam)
+		;;
+		match getdcl(st.parser.curstab, [.ns="", .name=nam])
+		| `std.Some d:	initvar(st, e, d)
+		| `std.None:	err(e.loc, "undeclared variable {}", nam)
+		;;
+		-> e
+	| _:
+		-> e
+	;;
+
+
+	/*
+	if we have a namespace by this name, then we need to
+	resolve the var in it, and build an `Ovar instead of
+	an `Omemb expression.
+	*/
+	match std.htget(st.file.ns, ns)
+	| `std.None:	-> e
+	| `std.Some stab:	
+		match getdcl(stab, [.ns=ns, .name=name])
+		| `std.None:
+			err(e.loc, "undeclared variable {}", e)
+		| `std.Some dcl:
+			e = mkexpr(e.loc, `Ovar [.ns=ns, .name=name])
+			initvar(st, e, dcl)
+			-> e
+		;;
+	;;
+}
+
+const initvar = {st, e, dcl
+	std.assert(!dcl.isgeneric, "generics not yet supported\n")
+	e.ty = dcl.ty
 }
 
 const inferbinop = {st, e, a, b, traits
@@ -122,9 +202,6 @@ const inferderef = {st, e, pointer
 }
 
 const inferlit = {st, l
-}
-
-const infervar = {st, v
 }
 
 const unify = {st, u, v
@@ -187,14 +264,24 @@ const unify = {st, u, v
 const checksize = {st, a, b
 }
 
-const tf = {st, t
+const tylookup = {ty
 	while true
-		match tymap[t.id]
-		| -1:	-> t
-		| id:	t = types[id]
+		match tymap[ty.id]
+		| -1:	-> ty
+		| id:	ty = types[id]
 		;;
 	;;
-	-> t
+	-> ty
+}
+
+const tf = {st, ty
+	ty = tylookup(ty)
+	ty = tyresolve(st, ty)
+	-> ty
+}
+
+const tyresolve = {st, ty
+	-> ty
 }
 
 const tyrank = {t
@@ -229,8 +316,5 @@ const istyarray = {t
 	| &[.ty=`Tyarray _]:	-> true
 	| _:	-> false
 	;;
-}
-
-const fix = {
 }
 

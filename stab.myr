@@ -12,7 +12,9 @@ pkg mparse =
 	const popstab	: (p : parser# -> void)
 
 	const putdcl	: (st : stab#, name : name, sym : dcl# -> void)
+	const getdcl	: (st : stab#, name : name -> std.option(dcl#))
 	const putucon	: (st : stab#, name : name, sym : ucon# -> void)
+	const getucon	: (st : stab#, name : name -> std.option(ucon#))
 
 	const puttype	: (st : stab#, name : name, ty : tydef# -> void)
 	const puttypefwd	: (st : stab#, name : name, loc : srcloc -> void)
@@ -65,6 +67,13 @@ const putdcl = {st, n, sym
 	std.htput(st.syms, n, `Dcl sym)
 }
 
+const getdcl = {st, n
+	match std.htget(st.syms, n)
+	| `std.Some `Dcl d:	-> `std.Some d
+	| _:	-> `std.None
+	;;
+}
+
 const putucon = {st, n, uc
 	match std.htget(st.syms, n)
 	| `std.Some `Dcl d:	err(uc.loc, "duplicate declaration of {}, first declared on {}\n", n, d.loc)
@@ -72,6 +81,13 @@ const putucon = {st, n, uc
 	| `std.None:	/* everthing is fine */
 	;;
 	std.htput(st.syms, n, `Ucon uc)
+}
+
+const getucon = {st, n
+	match std.htget(st.syms, n)
+	| `std.Some `Ucon u:	-> `std.Some u
+	| _:	-> `std.None
+	;;
 }
 
 const puttype = {st, n, ty
@@ -141,7 +157,6 @@ const mergablety = {old, new
                ;;
        ;;
 }
-
 
 const stnamehash = {n
 	-> std.strhash(n.name)
