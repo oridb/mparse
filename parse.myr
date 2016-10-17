@@ -31,6 +31,7 @@ const file = {p
 	])
 	f.globls.super = `std.Some f.builtin
 	pushstab(p, f.globls)
+	tyinit(f)
 
 	/* parse */
 	p.file = f

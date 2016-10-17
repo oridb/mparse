@@ -18,6 +18,7 @@ pkg mparse =
 
 	const puttype	: (st : stab#, name : name, ty : tydef# -> void)
 	const puttypefwd	: (st : stab#, name : name, loc : srcloc -> void)
+	const gettype	: (st : stab#, name : name -> std.option(tydef#))
 
 	const puttrait	: (st : stab#, name : name, tr : traitdef# -> void)
 	const puttraitfwd	: (st : stab#, name : name, tr : traitdef# -> void)
@@ -68,10 +69,17 @@ const putdcl = {st, n, sym
 }
 
 const getdcl = {st, n
-	match std.htget(st.syms, n)
-	| `std.Some `Dcl d:	-> `std.Some d
-	| _:	-> `std.None
+	while true
+		match std.htget(st.syms, n)
+		| `std.Some `Dcl d:	-> `std.Some d
+		| _:	/* nothing */
+		;;
+		match st.super
+		| `std.Some super:	st = super
+		| `std.None:	-> `std.None
+		;;
 	;;
+	std.die("unreachable")
 }
 
 const putucon = {st, n, uc
@@ -84,10 +92,17 @@ const putucon = {st, n, uc
 }
 
 const getucon = {st, n
-	match std.htget(st.syms, n)
-	| `std.Some `Ucon u:	-> `std.Some u
-	| _:	-> `std.None
+	while true
+		match std.htget(st.syms, n)
+		| `std.Some `Ucon u:	-> `std.Some u
+		| _:	/* nothing */
+		;;
+		match st.super
+		| `std.Some super:	st = super
+		| `std.None:	-> `std.None
+		;;
 	;;
+	std.die("unreachable")
 }
 
 const puttype = {st, n, ty
@@ -101,7 +116,7 @@ const puttype = {st, n, ty
 	std.htput(st.types, n, `Tydef ty)
 }
 
-const puttypefwd = {st, n : name, loc
+const puttypefwd = {st, n, loc
 	match std.htget(st.types, n)
 	| `std.Some `Tyfwd _:	/* everything is fine */
 	| `std.Some `Tydef t:	/* everything is fine, although a bit weird to get a fwd after a def */
@@ -112,6 +127,19 @@ const puttypefwd = {st, n : name, loc
 	std.htput(st.types, n, `Tyfwd loc)
 }
 
+const gettype = {st, n
+	while true
+		match std.htget(st.types, n)
+		| `std.Some `Tydef t:	-> `std.Some t
+		| _:	/* nothing */
+		;;
+		match st.super
+		| `std.Some super:	st = super
+		| `std.None:	-> `std.None
+		;;
+	;;
+	std.die("unreachable")
+}
 
 const puttrait = {st, n, tr
 	match std.htget(st.types, n)

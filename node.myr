@@ -1,6 +1,7 @@
 use std
 
 use "types"
+use "stab"
 
 pkg mparse =
 	/* expr nodes */
@@ -19,10 +20,12 @@ pkg mparse =
 	const mkname	: (name : name, params : tydef#[:] -> tyname#)
 	const mktyvar	: (l : srcloc -> tydef#)
 	const mkty	: (l : srcloc, ty : ty -> tydef#)
+	const tyinit	: (f : file# -> void)
 
 	/* globals */
 	var types	: tydef#[:]
 	var tymap	: int32[:]
+	var traits	: std.bitset#[:]
 ;;
 
 /* global state */
@@ -30,6 +33,52 @@ var ntypes	: int32 = 0
 var ntraits	: int32 = 0
 var tymap
 var types
+var traits
+
+const tyinit = {f
+	var t
+
+	t = mkty([.line=-1], `Tyvoid)
+	puttype(f.builtin, [.ns="", .name="void"], t)
+	t = mkty([.line=-1], `Tybool)
+	puttype(f.builtin, [.ns="", .name="bool"], t)
+	t = mkty([.line=-1], `Tychar)
+	puttype(f.builtin, [.ns="", .name="char"], t)
+	t = mkty([.line=-1], `Tyint8)
+	puttype(f.builtin, [.ns="", .name="int8"], t)
+	t = mkty([.line=-1], `Tyint16)
+	puttype(f.builtin, [.ns="", .name="int16"], t)
+	t = mkty([.line=-1], `Tyint32)
+	puttype(f.builtin, [.ns="", .name="int32"], t)
+	t = mkty([.line=-1], `Tyint)
+	puttype(f.builtin, [.ns="", .name="int"], t)
+	t = mkty([.line=-1], `Tyint64)
+	puttype(f.builtin, [.ns="", .name="int64"], t)
+
+	/* unsigned integers */
+	t = mkty([.line=-1], `Tybyte)
+	puttype(f.builtin, [.ns="", .name="byte"], t)
+	t = mkty([.line=-1], `Tyuint8)
+	puttype(f.builtin, [.ns="", .name="uint8"], t)
+	t = mkty([.line=-1], `Tyuint16)
+	puttype(f.builtin, [.ns="", .name="uint16"], t)
+	t = mkty([.line=-1], `Tyuint32)
+	puttype(f.builtin, [.ns="", .name="uint32"], t)
+	t = mkty([.line=-1], `Tyuint)
+	puttype(f.builtin, [.ns="", .name="uint"], t)
+	t = mkty([.line=-1], `Tyuint64)
+	puttype(f.builtin, [.ns="", .name="uint64"], t)
+
+	/*floats */
+	t = mkty([.line=-1], `Tyflt32)
+	puttype(f.builtin, [.ns="", .name="flt32"], t)
+	t = mkty([.line=-1], `Tyflt64)
+	puttype(f.builtin, [.ns="", .name="flt64"], t)
+
+	/* a bit odd.. */
+	t = mkty([.line=-1], `Tyvalist)
+	puttype(f.builtin, [.ns="", .name="..."], t)
+}
 
 const mkexpr = {l, e
 	-> std.mk([
@@ -120,6 +169,7 @@ const mktyvar = {l
 
 const mkty = {l, ty
 	var t
+
 	t = std.mk([
 		.ty = ty,
 		.id = ntypes++,
@@ -129,6 +179,7 @@ const mkty = {l, ty
 		.traits = std.mkbs(),
 	])
 	std.slpush(&types, t)
+	std.slpush(&traits, std.mkbs())
 	std.slpush(&tymap, -1)
 	-> t
 }

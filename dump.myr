@@ -252,7 +252,6 @@ const namedump = {sb, n
 
 const tydefdump = {sb, ty
 	match ty.ty
-	| `Tynone:	std.sbfmt(sb, "BADTYPE")
 	| `Tyvoid:	std.sbfmt(sb, "void")
 	| `Tybool:	std.sbfmt(sb, "bool")
 	| `Tychar:	std.sbfmt(sb, "char")
@@ -285,7 +284,8 @@ const tydefdump = {sb, ty
 	| `Tyfunc args:		parendump(sb, args[1:], `std.Some args[0])
 	/* user defined types */
 	| `Tyname tn:	tynamedump(sb, tn)
-	| `Tyunres tn:	tynamedump(sb, tn)
+	| `Tyunres tn:	std.sbputs(sb, "?"); tynamedump(sb, tn)
+	/* FIXME: unresolved types are printed with a '?' to debug inference */
 	| `Typaram (n, tr):	typaramdump(sb, n, tr)
 	| `Tyvar id:	std.sbfmt(sb, "${}", id)
 	;;

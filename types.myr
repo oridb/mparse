@@ -68,7 +68,6 @@ pkg mparse =
 	;;
 		
 	type ty = union
-		`Tynone
 		`Tyvoid
 		`Tybool
 		`Tychar

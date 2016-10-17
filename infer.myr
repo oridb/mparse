@@ -253,12 +253,22 @@ const unify = {st, u, v
 	| (&[.ty=`Tyflt64], &[.ty=`Tyflt64]):	-> a
 	| (&[.ty=`Tyvalist], &[.ty=`Tyvalist]):	-> a
 	| (&[.ty=`Tyvar _], &[.ty=t]):
+		mergetraits(st, a, b)
+		-> a
 	| _:
 		err(a.loc, "type mismatch: {} mismatches with {}\n", a, b)
 	;;
+}
 
-	std.put("unify {} => {}\n", u, v)
-	-> a
+const mergetraits = {st, a, b
+	if istyvar(b)
+		std.bsunion(traits[a.id], traits[b.id])
+		-> true
+	elif std.bsissubset(traits[a.id], traits[b.id])
+		-> true
+	else
+		err([.line=-1], "{} missing traits for {} (FIXME: errors)\n", a, b)
+	;;
 }
 
 const checksize = {st, a, b
@@ -274,14 +284,22 @@ const tylookup = {ty
 	-> ty
 }
 
-const tf = {st, ty
+const tf = {st, ty : tydef#
 	ty = tylookup(ty)
 	ty = tyresolve(st, ty)
 	-> ty
 }
 
 const tyresolve = {st, ty
-	-> ty
+	match ty.ty
+	| `Tyunres namedty:
+		match gettype(st.parser.curstab, namedty.name)
+		| `std.Some r:	-> r
+		| `std.None:	err([.line=-1], "missing type {}\n", ty)
+		;;
+	| _:
+		-> ty
+	;;
 }
 
 const tyrank = {t
