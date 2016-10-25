@@ -22,10 +22,24 @@ pkg mparse =
 	const mkty	: (l : srcloc, ty : ty -> tydef#)
 	const tyinit	: (f : file# -> void)
 
-	/* globals */
+	/* commonly used tytraits and types, initialized in __init__ and then constant */
+	var Trnum	: traitdef#
+	var Trint	: traitdef#
+	var Trflt	: traitdef#
+	var Tridx	: traitdef#
+	var Trslice	: traitdef#
+	var Trfunc	: traitdef#
+	var Triter	: traitdef#
+
+	var Tystring	: tydef#
+	var Tybool	: tydef#
+	var Tyvoidptr	: tydef#
+
+	/* global state */
 	var types	: tydef#[:]
 	var tymap	: int32[:]
-	var traits	: std.bitset#[:]
+	var tytraits	: std.bitset#[:]
+	var traitdefs	: traitdef#[:]
 ;;
 
 /* global state */
@@ -33,50 +47,127 @@ var ntypes	: int32 = 0
 var ntraits	: int32 = 0
 var tymap
 var types
-var traits
+var tytraits
+var traitdefs
+
+var Trnum
+var Trint
+var Trflt
+var Tridx
+var Trslice
+var Trfunc
+var Triter
+
+var Tystring
+var Tybool
+var Tyvoidptr
 
 const tyinit = {f
-	var t
+	var loc, t, tv
 
-	t = mkty([.line=-1], `Tyvoid)
+	/* the type variable created here is never actually used. */
+	tv = mktyvar(loc)
+	loc = [.line=-1, .file="internal"]
+
+	/* create tytraits */
+	Trnum = mktraitdef(loc, [.ns="", .name="numeric"], tv, [][:], [][:])
+	puttrait(f.builtin, Trnum.name, Trnum)
+	Trint = mktraitdef(loc, [.ns="", .name="integral"], tv, [][:], [][:])
+	puttrait(f.builtin, Trint.name, Trint)
+	Trflt = mktraitdef(loc, [.ns="", .name="floating"], tv, [][:], [][:])
+	puttrait(f.builtin, Trflt.name, Trflt)
+	Tridx = mktraitdef(loc, [.ns="", .name="indexable"], tv, [][:], [][:])
+	puttrait(f.builtin, Tridx.name, Tridx)
+	Trslice = mktraitdef(loc, [.ns="", .name="sliceable"], tv, [][:], [][:])
+	puttrait(f.builtin, Trslice.name, Trslice)
+	Trfunc = mktraitdef(loc, [.ns="", .name="function"], tv, [][:], [][:])
+	puttrait(f.builtin, Trfunc.name, Trfunc)
+	Triter = mktraitdef(loc, [.ns="", .name="iterable"], tv, [][:], [][:])
+	puttrait(f.builtin, Triter.name, Triter)
+
+	/* create types */
+	t = mkty(loc, `Tyvoid)
 	puttype(f.builtin, [.ns="", .name="void"], t)
-	t = mkty([.line=-1], `Tybool)
+
+	t = mkty(loc, `Tybool)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="bool"], t)
-	t = mkty([.line=-1], `Tychar)
+
+	t = mkty(loc, `Tychar)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="char"], t)
-	t = mkty([.line=-1], `Tyint8)
+
+	t = mkty(loc, `Tyint8)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="int8"], t)
-	t = mkty([.line=-1], `Tyint16)
+
+	t = mkty(loc, `Tyint16)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="int16"], t)
-	t = mkty([.line=-1], `Tyint32)
+
+	t = mkty(loc, `Tyint32)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="int32"], t)
-	t = mkty([.line=-1], `Tyint)
+
+	t = mkty(loc, `Tyint)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="int"], t)
-	t = mkty([.line=-1], `Tyint64)
+
+	t = mkty(loc, `Tyint64)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="int64"], t)
 
 	/* unsigned integers */
-	t = mkty([.line=-1], `Tybyte)
+	t = mkty(loc, `Tybyte)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="byte"], t)
-	t = mkty([.line=-1], `Tyuint8)
+
+	t = mkty(loc, `Tyuint8)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="uint8"], t)
-	t = mkty([.line=-1], `Tyuint16)
+
+	t = mkty(loc, `Tyuint16)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="uint16"], t)
-	t = mkty([.line=-1], `Tyuint32)
+
+	t = mkty(loc, `Tyuint32)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="uint32"], t)
-	t = mkty([.line=-1], `Tyuint)
+
+	t = mkty(loc, `Tyuint)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="uint"], t)
-	t = mkty([.line=-1], `Tyuint64)
+
+	t = mkty(loc, `Tyuint64)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="uint64"], t)
 
 	/*floats */
-	t = mkty([.line=-1], `Tyflt32)
+	t = mkty(loc, `Tyflt32)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trflt.id)
 	puttype(f.builtin, [.ns="", .name="flt32"], t)
-	t = mkty([.line=-1], `Tyflt64)
+
+	t = mkty(loc, `Tyflt64)
+	std.bsput(tytraits[t.id], Trnum.id)
+	std.bsput(tytraits[t.id], Trflt.id)
 	puttype(f.builtin, [.ns="", .name="flt64"], t)
 
 	/* a bit odd.. */
-	t = mkty([.line=-1], `Tyvalist)
+	t = mkty(loc, `Tyvalist)
 	puttype(f.builtin, [.ns="", .name="..."], t)
 }
 
@@ -143,7 +234,9 @@ const mkmatch = {l, val, cases
 }
 
 const mktraitdef = {l, name, ty, auxty, dcls 
-	-> std.mk([
+	var tr
+	
+	tr = std.mk([
 		.id=ntraits++,
 		.loc=l,
 		.name=name,
@@ -151,6 +244,8 @@ const mktraitdef = {l, name, ty, auxty, dcls
 		.aux=auxty,
 		.dcls=dcls,
 	])
+	std.slpush(&traitdefs, tr)
+	-> tr
 }
 
 const mkimpldef = {l, name, ty, auxty, dcls 
@@ -179,7 +274,7 @@ const mkty = {l, ty
 		.traits = std.mkbs(),
 	])
 	std.slpush(&types, t)
-	std.slpush(&traits, std.mkbs())
+	std.slpush(&tytraits, std.mkbs())
 	std.slpush(&tymap, -1)
 	-> t
 }

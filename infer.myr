@@ -115,7 +115,7 @@ const inferexpr = {st, e
 	| &[.e=`Ocontinue]:	std.fatal("no inference for {}\n", e)
 	| &[.e=`Ovar _]:	/* already dealt in checkns */
 	| &[.e=`Ogap]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Olit lit]:	inferlit(st, lit)
+	| &[.e=`Olit lit]:	inferlit(st, e, lit)
 	| &[.e=`Oucon (name, arg)]:	std.fatal("no inference for {}\n", e)
 	| &[.e=`Otup vals]:	std.fatal("no inference for {}\n", e)
 	| &[.e=`Ostruct vals]:	std.fatal("no inference for {}\n", e)
@@ -201,7 +201,31 @@ const inferaddr = {st, e, pointee
 const inferderef = {st, e, pointer
 }
 
-const inferlit = {st, l
+const inferlit = {st, e, l
+	match l
+	| `Lint _:
+		addtrait(e.ty, Trint)
+		addtrait(e.ty, Trnum)
+	| `Lchr _:
+		addtrait(e.ty, Trint)
+		addtrait(e.ty, Trnum)
+	| `Lflt _:
+		addtrait(e.ty, Trflt)
+		addtrait(e.ty, Trnum)
+	| `Lstr _:
+		unify(st, e.ty, Tystring)
+	| `Llbl _:
+	| `Lbool _:
+	| `Lfunc fn:
+	| `Lvoid:
+	;;
+}
+
+const addtrait = {ty, tr
+	match ty.ty
+	| `Tyvar id:	std.bsput(tytraits[id], tr.id)
+	| _:	std.fatal("adding trait {} to non-tyvar {}\n", tr, ty)
+	;;
 }
 
 const unify = {st, u, v
@@ -262,9 +286,9 @@ const unify = {st, u, v
 
 const mergetraits = {st, a, b
 	if istyvar(b)
-		std.bsunion(traits[a.id], traits[b.id])
+		std.bsunion(tytraits[a.id], tytraits[b.id])
 		-> true
-	elif std.bsissubset(traits[a.id], traits[b.id])
+	elif std.bsissubset(tytraits[a.id], tytraits[b.id])
 		-> true
 	else
 		err([.line=-1], "{} missing traits for {} (FIXME: errors)\n", a, b)
