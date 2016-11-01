@@ -70,13 +70,13 @@ const inferexpr = {st, e
 	| &[.e=`Omul (a, b)]:	inferbinop(st, e, a, b, "numeric")
 	| &[.e=`Odiv (a, b)]:	inferbinop(st, e, a, b, "numeric")
 	| &[.e=`Omod (a, b)]:	inferbinop(st, e, a, b, "numeric")
-	| &[.e=`Oneg a]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Oneg a]:	std.fatal("neg: no inference for {}\n", e)
 	| &[.e=`Obor (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Oband (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Obxor (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Obsl (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Obsr (a, b)]:	inferbinop(st, e, a, b, "integer")
-	| &[.e=`Obnot a]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Obnot a]:	std.fatal("not: no inference for {}\n", e)
 	| &[.e=`Opreinc a]:	inferincop(st, e, a)
 	| &[.e=`Opostinc a]:	inferincop(st, e, a)
 	| &[.e=`Opredec a]:	inferincop(st, e, a)
@@ -85,7 +85,7 @@ const inferexpr = {st, e
 	| &[.e=`Oderef a]:	inferderef(st, e, a)
 	| &[.e=`Olor (a, b)]:	inferbinlogical(st, e, a, b)
 	| &[.e=`Oland (a, b)]:	inferbinlogical(st, e, a, b)
-	| &[.e=`Olnot a]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Olnot a]:	std.fatal("lnot: no inference for {}\n", e)
 	| &[.e=`Oeq (a, b)]:	inferbinlogical(st, e, a, b)
 	| &[.e=`One (a, b)]:	inferbinlogical(st, e, a, b)
 	| &[.e=`Ogt (a, b)]:	inferbinlogical(st, e, a, b)
@@ -104,23 +104,23 @@ const inferexpr = {st, e
 	| &[.e=`Obsleq (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Obsreq (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Oidx (a, b)]:	inferidx(st, e, a, b)
-	| &[.e=`Oslice (a, lo, hi)]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Omemb (a, memb)]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Osize a]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Ocall (a, args)]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Ocast (a, ty)]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Oret a]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Ojmp name]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Obreak]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Ocontinue]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Oslice (a, lo, hi)]:	std.fatal("idx: no inference for {}\n", e)
+	| &[.e=`Omemb (a, memb)]:	std.fatal("slice: no inference for {}\n", e)
+	| &[.e=`Osize a]:	std.fatal("size: no inference for {}\n", e)
+	| &[.e=`Ocall (a, args)]:	std.fatal("call: no inference for {}\n", e)
+	| &[.e=`Ocast (a, ty)]:	std.fatal("cast: no inference for {}\n", e)
+	| &[.e=`Oret a]:	std.fatal("ret: no inference for {}\n", e)
+	| &[.e=`Ojmp name]:	std.fatal("jmp: no inference for {}\n", e)
+	| &[.e=`Obreak]:	std.fatal("break: no inference for {}\n", e)
+	| &[.e=`Ocontinue]:	std.fatal("continue: no inference for {}\n", e)
 	| &[.e=`Ovar _]:	/* already dealt in checkns */
-	| &[.e=`Ogap]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Ogap]:	std.fatal("gap: no inference for {}\n", e)
 	| &[.e=`Olit lit]:	inferlit(st, e, lit)
-	| &[.e=`Oucon (name, arg)]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Otup vals]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Ostruct vals]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Oarr vals]:	std.fatal("no inference for {}\n", e)
-	| &[.e=`Oidxlen]:	std.fatal("no inference for {}\n", e)
+	| &[.e=`Oucon (name, arg)]:	std.fatal("ucon: no inference for {}\n", e)
+	| &[.e=`Otup vals]:	std.fatal("tup: no inference for {}\n", e)
+	| &[.e=`Ostruct vals]:	std.fatal("struct: no inference for {}\n", e)
+	| &[.e=`Oarr vals]:	std.fatal("arr: no inference for {}\n", e)
+	| &[.e=`Oidxlen]:	std.fatal("idxlen: no inference for {}\n", e)
 	;;
 }
 
@@ -300,14 +300,11 @@ const checksize = {st, a, b
 
 const tylookup = {ty
 	while true
-		std.put("{} => {}\n", ty, tymap[ty.id])
 		match tymap[ty.id]
 		| -1:	
-			std.put("found {}\n", ty)
 			-> ty
 		| id:	
 			ty = types[id]
-			std.put("next {}\n", id)
 		;;
 	;;
 	-> ty
