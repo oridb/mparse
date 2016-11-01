@@ -93,6 +93,7 @@ const tyinit = {f
 	std.bsput(tytraits[t.id], Trnum.id)
 	std.bsput(tytraits[t.id], Trint.id)
 	puttype(f.builtin, [.ns="", .name="bool"], t)
+	Tybool = t
 
 	t = mkty(loc, `Tychar)
 	std.bsput(tytraits[t.id], Trnum.id)
@@ -169,6 +170,12 @@ const tyinit = {f
 	/* a bit odd.. */
 	t = mkty(loc, `Tyvalist)
 	puttype(f.builtin, [.ns="", .name="..."], t)
+
+	/* global types */
+	Tystring = mkty(loc, `Tyslice \
+		mkty(loc, `Tybyte))
+	Tyvoidptr = mkty(loc, `Typtr \
+		mkty(loc, `Tyvoid))
 }
 
 const mkexpr = {l, e
