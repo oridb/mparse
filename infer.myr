@@ -300,9 +300,14 @@ const checksize = {st, a, b
 
 const tylookup = {ty
 	while true
+		std.put("{} => {}\n", ty, tymap[ty.id])
 		match tymap[ty.id]
-		| -1:	-> ty
-		| id:	ty = types[id]
+		| -1:	
+			std.put("found {}\n", ty)
+			-> ty
+		| id:	
+			ty = types[id]
+			std.put("next {}\n", id)
 		;;
 	;;
 	-> ty

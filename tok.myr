@@ -315,7 +315,7 @@ a numerical value.
 const number = {ts, base
 	var buf, nbuf
 	var isfloat, issigned
-	var v, bits
+	var f, v, bits
 
 	buf = ts.rest
 	nbuf = 0
@@ -326,6 +326,11 @@ const number = {ts, base
 			continue
 		elif c == '.'
 			isfloat = true
+		elif base == 10 && (c == 'e' || c == 'E')
+			isfloat = true
+			if peekc(ts) == '+' || peekc(ts) == '-'
+				takec(ts)
+			;;
 		else 
 			v = std.charval(c, base)
 			if v < 0
@@ -339,10 +344,11 @@ const number = {ts, base
 		if base != 10
 			err(ts.loc, "floats must be in base 10\n")
 		;;
-		std.fatal("unable to parse floats: fuck me\n")
-		/*
-		-> `Tfltlit std.flt64parse(buf[:n])
-		*/
+		match std.flt64parse(buf[:nbuf])
+		| `std.Some p:	f = p
+		| `std.None:	err(ts.loc, "invalid float {}", buf[:nbuf])
+		;;
+		-> `Tfltlit f
 	else
 		issigned = true
 		if peekc(ts) == 'u'
