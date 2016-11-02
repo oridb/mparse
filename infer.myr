@@ -285,7 +285,7 @@ const unify = {st, u, v
 }
 
 const mergetraits = {st, a, b
-	if istyvar(b)
+	if istyvar(a)
 		std.bsunion(tytraits[a.id], tytraits[b.id])
 		-> true
 	elif std.bsissubset(tytraits[a.id], tytraits[b.id])
@@ -337,7 +337,8 @@ const tyrank = {t
 }
 
 const hastraits = {t
-	-> false
+	/* maybe this sucks a lot */
+	-> std.bscount(tytraits[t.id]) != 0
 }
 
 const occurs = {st, a, b
