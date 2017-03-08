@@ -346,7 +346,7 @@ const number = {ts, base
 		;;
 		match std.flt64parse(buf[:nbuf])
 		| `std.Some p:	f = p
-		| `std.None:	err(ts.loc, "invalid float {}", buf[:nbuf])
+		| `std.None:	err(ts.loc, "invalid float '{}'\n", buf[:nbuf])
 		;;
 		-> `Tfltlit f
 	else

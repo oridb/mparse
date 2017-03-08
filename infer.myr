@@ -217,8 +217,37 @@ const inferlit = {st, e, l
 	| `Llbl _:
 	| `Lbool _:
 	| `Lfunc fn:
+		pushstab(st.parser, fn.stab)
+		inferstab(st, fn.stab)
+		inferfunc(st, fn)
+		popstab(st.parser)
 	| `Lvoid:
 	;;
+}
+
+const inferstab = {st, s
+	for (k, v) in std.byhtkeyvals(s.syms)
+		match v
+		| `Dcl d:	d.ty = tf(st, d.ty)
+		| `Ucon uc:	/* nothing */
+		;;
+	;;
+
+	for (k, v) in std.byhtkeyvals(s.types)
+		match v
+		| `Tyfwd l:
+			match gettype(s, k)
+			| `std.Some t:
+			| `std.None:
+			;;
+		| `Tydef ty:
+		| `Trfwd tr:
+		| `Trdef tr:
+		;;
+	;;
+}
+
+const inferfunc = {st, fn
 }
 
 const addtrait = {ty, tr

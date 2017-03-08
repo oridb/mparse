@@ -483,9 +483,8 @@ const retexpr = {p
 	;;
 }
 
-
 const expr = {p
-	match unionexpr(p)
+	match prefixexpr(p)
 	| `std.Some e:	-> `std.Some exprcore(p, e, 0)
 	| `std.None:	-> `std.None
 	;;
@@ -508,7 +507,7 @@ const exprcore = {p, lhs, minprec
 		oploc = peekloc
 		toknext(p)
 
-		match unionexpr(p)
+		match prefixexpr(p)
 		| `std.Some e:	rhs = e
 		| `std.None:	err(p.loc, "expected primary expression after {}, near {}\n", op, tokpeekt(p))
 		;;
@@ -539,12 +538,28 @@ const exprcore = {p, lhs, minprec
 		| `Tlor:	lhs = mkexpr(oploc, `Olor (lhs, rhs))
 		| `Tland:	lhs = mkexpr(oploc, `Oland (lhs, rhs))
 		/* multiplicative */
-		| `Teq:	lhs = mkexpr(oploc, `Oeq (lhs, rhs))
-		| `Tgt:	lhs = mkexpr(oploc, `Ogt (lhs, rhs))
-		| `Tge:	lhs = mkexpr(oploc, `Oge (lhs, rhs))
-		| `Tlt:	lhs = mkexpr(oploc, `Olt (lhs, rhs))
-		| `Tle:	lhs = mkexpr(oploc, `Ole (lhs, rhs))
-		| `Tne:	lhs = mkexpr(oploc, `One (lhs, rhs))
+		| `Teq:		lhs = mkexpr(oploc, `Oeq (lhs, rhs))
+		| `Tgt:		lhs = mkexpr(oploc, `Ogt (lhs, rhs))
+		| `Tge:		lhs = mkexpr(oploc, `Oge (lhs, rhs))
+		| `Tlt:		lhs = mkexpr(oploc, `Olt (lhs, rhs))
+		| `Tle:		lhs = mkexpr(oploc, `Ole (lhs, rhs))
+		| `Tne:		lhs = mkexpr(oploc, `One (lhs, rhs))
+		/* binary or */
+		| `Tbor:	lhs = mkexpr(oploc, `Obor (lhs, rhs))
+		| `Tbxor:	lhs = mkexpr(oploc, `Obxor (lhs, rhs))
+		/* binary and */
+		| `Tband:	lhs = mkexpr(oploc, `Oband (lhs, rhs))
+		/* additive */
+		| `Tplus:	lhs = mkexpr(oploc, `Oadd (lhs, rhs))
+		| `Tminus:	lhs = mkexpr(oploc, `Osub (lhs, rhs))
+		/* multiplicative */
+		| `Tmul:	lhs = mkexpr(oploc, `Omul (lhs, rhs))
+		| `Tdiv:	lhs = mkexpr(oploc, `Odiv (lhs, rhs))
+		| `Tmod:	lhs = mkexpr(oploc, `Omod (lhs, rhs))
+		/* shift */
+		| `Tbsl:	lhs = mkexpr(oploc, `Obsl (lhs, rhs))
+		| `Tbsr:	lhs = mkexpr(oploc, `Obsr (lhs, rhs))
+		/* all others */
 		| _:	std.die("broken parser\n")
 		;;
 	;;
@@ -569,115 +584,29 @@ const exprprec = {tok
 	| `Tlor:	-> (1, false)
 	| `Tland:	-> (2, false)
 	/* multiplicative */
-	| `Teq:	-> (3, false)
-	| `Tgt:	-> (3, false)
-	| `Tge:	-> (3, false)
-	| `Tlt:	-> (3, false)
-	| `Tle:	-> (3, false)
-	| `Tne:	-> (3, false)
-	/* all others */
-	| _:	-> (-1, false)
-	;;
-}
-
-const unionexpr = {p
-	var tag, expr
-
-	match tokpeek(p)
-	| (l, `Ttick):
-		toknext(p)
-		match name(p)
-		| `std.Some n:	tag = n
-		| `std.None:	err(l, "expected union tag after '`'\n")
-		;;
-
-		expr = unionexpr(p)
-		-> `std.Some mkexpr(l, `Oucon (tag, expr))
-	| _:
-		-> binexpr(p)
-	;;
-}
-
-const binexpr = {p
-	match prefixexpr(p)
-	| `std.Some e:	-> `std.Some binexprcore(p, e, 0)
-	| `std.None:	-> `std.None
-	;;
-}
-
-const binexprcore = {p, lhs, minprec
-	var prec, peekprec
-	var op, oploc
-	var peek, peekloc
-	var rhs
-
-	(peekloc, peek) = tokpeek(p)
-	while true
-		prec = binprec(peek) 
-		if prec < minprec
-			break
-		;;
-
-		op = peek
-		oploc = peekloc
-		toknext(p)
-
-		match prefixexpr(p)
-		| `std.Some e:	rhs = e
-		| `std.None:	err(p.loc, "expected primary expression after {}, near {}\n", op, tokpeekt(p))
-		;;
-
-		(peekloc, peek) = tokpeek(p)
-		while true
-			peekprec = binprec(peek)
-			if peekprec <= prec
-				break
-			;;
-			rhs = binexprcore(p, rhs, peekprec)
-			(peekloc, peek) = tokpeek(p)
-		;;
-		match op
-		/* binary or */
-		| `Tbor:	lhs = mkexpr(oploc, `Obor (lhs, rhs))
-		| `Tbxor:	lhs = mkexpr(oploc, `Obxor (lhs, rhs))
-		/* binary and */
-		| `Tband:	lhs = mkexpr(oploc, `Oband (lhs, rhs))
-		/* additive */
-		| `Tplus:	lhs = mkexpr(oploc, `Oadd (lhs, rhs))
-		| `Tminus:	lhs = mkexpr(oploc, `Osub (lhs, rhs))
-		/* multiplicative */
-		| `Tmul:	lhs = mkexpr(oploc, `Omul (lhs, rhs))
-		| `Tdiv:	lhs = mkexpr(oploc, `Odiv (lhs, rhs))
-		| `Tmod:	lhs = mkexpr(oploc, `Omod (lhs, rhs))
-		/* shift */
-		| `Tbsl:	lhs = mkexpr(oploc, `Obsl (lhs, rhs))
-		| `Tbsr:	lhs = mkexpr(oploc, `Obsr (lhs, rhs))
-		/* all others */
-		| _:	std.die("broken parser\n")
-		;;
-	;;
-	-> lhs
-}
-
-const binprec = {tok
-	match tok
+	| `Teq:		-> (3, false)
+	| `Tgt:		-> (3, false)
+	| `Tge:		-> (3, false)
+	| `Tlt:		-> (3, false)
+	| `Tle:		-> (3, false)
+	| `Tne:		-> (3, false)
 	/* binary or */
-	| `Tbor:	-> 0
-	| `Tbxor:	-> 0
+	| `Tbor:	-> (4, false)
+	| `Tbxor:	-> (4, false)
 	/* binary and */
-	| `Tband:	-> 1
+	| `Tband:	-> (5, false)
 	/* additive */
-	| `Tplus:	-> 2
-	| `Tminus:	-> 2
+	| `Tplus:	-> (6, false)
+	| `Tminus:	-> (6, false)
 	/* multiplicative */
-	| `Tmul:	-> 3
-	| `Tdiv:	-> 3
-	| `Tmod:	-> 3
+	| `Tmul:	-> (7, false)
+	| `Tdiv:	-> (7, false)
+	| `Tmod:	-> (7, false)
 	/* shift */
-	| `Tbsl:	-> 4
-	| `Tbsr:	-> 3
+	| `Tbsl:	-> (8, false)
+	| `Tbsr:	-> (8, false)
 	/* all others */
-	| _:	-> -1
+	| _:		-> (-1, false)
 	;;
 }
 
@@ -718,10 +647,26 @@ const prefixexpr = {p
 		| `std.Some e:	-> `std.Some e
 		|`std.None:	-> `std.None
 		;;
+	| (l, `Ttick):
+		match unionexpr(l, p)
+		| `std.Some e:	-> `std.Some e
+		| `std.None:	-> `std.None
+		;;
 	| _:	
 		tokunget(p)
 		-> postfixexpr(p)
 	;;
+}
+
+const unionexpr = {l, p
+	var tag, expr
+
+	match name(p)
+	| `std.Some n:	tag = n
+	| `std.None:	err(l, "expected union tag after '`'\n")
+	;;
+	expr = prefixexpr(p)
+	-> `std.Some mkexpr(l, `Oucon (tag, expr))
 }
 
 const postfixexpr = {p
