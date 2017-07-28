@@ -1623,10 +1623,9 @@ const tupletype = {p, loc, firstname
 }
 
 const tyunion = {p, loc
-	var u, elts, loc
 	var tag, tagloc, ty
+	var u, elts
 
-	loc = p.loc
 	elts = [][:]
 	while true
 		optendlns(p)
