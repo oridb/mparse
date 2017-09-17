@@ -14,7 +14,7 @@ const main = {args
 	])
 
 	infer = true
-	for o in cmd.opts
+	for o : cmd.opts
 		match o
 		| ('n', ""):	infer = false
 		| _:	std.die("unreachable")
@@ -24,7 +24,7 @@ const main = {args
 		p = mparse.tokinitf(0, "stdin")
 		dump(p, infer)
 	else
-		for arg in cmd.args
+		for arg : cmd.args
 			std.put("infer: {}\n", infer)
 			p = mparse.tokinit(arg)
 			std.put("infer: {}\n", infer)

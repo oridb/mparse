@@ -25,10 +25,10 @@ const infer = {p, f
 		.file = f,
 	]
 
-	for dcl in f.dcls
+	for dcl : f.dcls
 		inferdcl(&st, dcl)
 	;;
-	for dcl in f.dcls
+	for dcl : f.dcls
 		fix(&st, dcl)
 	;;
 }
@@ -226,14 +226,14 @@ const inferlit = {st, e, l
 }
 
 const inferstab = {st, s
-	for (k, v) in std.byhtkeyvals(s.syms)
+	for (k, v) : std.byhtkeyvals(s.syms)
 		match v
 		| `Dcl d:	d.ty = tf(st, d.ty)
 		| `Ucon uc:	/* nothing */
 		;;
 	;;
 
-	for (k, v) in std.byhtkeyvals(s.types)
+	for (k, v) : std.byhtkeyvals(s.types)
 		match v
 		| `Tyfwd l:
 			match gettype(s, k)
