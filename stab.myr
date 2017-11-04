@@ -29,10 +29,10 @@ const mkstab = {super
 		.super = super,
 		.ns = "",
 		.isfunc = false,
-		.syms = std.mkht(stnamehash, stnameeq),
-		.types = std.mkht(stnamehash, stnameeq),
-		.impls = std.mkht(stnamehash, stnameeq),
-		.env = std.mkht(stnamehash, stnameeq),
+		.syms = std.mkht(),
+		.types = std.mkht(),
+		.impls = std.mkht(),
+		.env = std.mkht(),
 	])
 }
 
@@ -153,7 +153,7 @@ const puttrait = {st, n, tr
 }
 
 const puttraitfwd = {st, n, tr
-	std.assert(std.streq(st.ns, n.ns), "sym name mismatches stab name\n")
+	std.assert(std.eq(st.ns, n.ns), "sym name mismatches stab name\n")
 	match std.htget(st.types, n)
 	| `std.Some `Tyfwd l:	err(tr.loc, "{} initially declared as type on {}\n", n, l)
 	| `std.Some `Tydef t:	err(tr.loc, "{} initially declared as type on }\n", n, t.loc)
@@ -185,12 +185,3 @@ const mergablety = {old, new
                ;;
        ;;
 }
-
-const stnamehash = {n
-	-> std.strhash(n.name)
-}
-
-const stnameeq = {a, b
-	-> std.streq(a.name, b.name)
-}
-

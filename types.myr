@@ -323,4 +323,13 @@ pkg mparse =
 		`Visexport
 		`Visbuiltin
 	;;
+
+
+	impl std.hashable name =
+		hash = {n; -> std.hash(n.name) }
+	;;
+
+	impl std.equatable name =
+		eq = {a, b; -> std.eq(a.name, b.name) }
+	;;
 ;;

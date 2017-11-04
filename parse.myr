@@ -27,7 +27,7 @@ const file = {p
 		.init = `std.None,
 		.globls = mkstab(`std.None),
 		.builtin = mkstab(`std.None),
-		.ns = std.mkht(std.strhash, std.streq),
+		.ns = std.mkht(),
 	])
 	f.globls.super = `std.Some f.builtin
 	pushstab(p, f.globls)
@@ -432,7 +432,7 @@ const dclname = {p, dcl
 	/* attributes (const | var) name */
 	match name(p)
 	| `std.Some n:
-		if !std.streq(p.curns, n.ns) && !dcl.isextern
+		if !std.eq(p.curns, n.ns) && !dcl.isextern
 			err(dcl.loc, "only extern decls may change namespaces\n")
 		;;
 		dcl.name = n
@@ -1291,7 +1291,7 @@ const blkbody = {p, st
 		| `std.None:
 		| `std.Some dcls:
 			found = true
-			for d in dcls
+			for d : dcls
 				std.slpush(&stmts, mkstmt(d.loc, `Ndcl d))
 			;;
 		;;
@@ -1664,7 +1664,7 @@ const tyunion = {p, loc
 	;;
 
 	u = mkty(loc, `Tyunion elts)
-	for e in elts
+	for e : elts
 		e.uty = u
 	;;
 	-> u

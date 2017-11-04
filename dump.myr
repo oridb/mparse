@@ -108,7 +108,7 @@ const fmtloc = {sb, ap, opts
 
 const filedump = {sb, f, ind
 	ifmt(sb, ind, "file: {}\n", f.path)
-	for u in f.uses
+	for u : f.uses
 		match u
 		| `Ulocal l:	ifmt(sb, ind + 1, "local-use:\t{}\n", l)
 		| `Ulib l:	ifmt(sb, ind + 1, "lib-use:\t{}\n", l)
@@ -117,7 +117,7 @@ const filedump = {sb, f, ind
 	ifmt(sb, ind, "libs: {}\n", f.extlibs)
 	ifmt(sb, ind, "extlibs: {}\n", f.extlibs)
 
-	for i in f.extinit
+	for i : f.extinit
 		dcldump(sb, i, ind + 1)
 	;;
 
@@ -129,7 +129,7 @@ const filedump = {sb, f, ind
 	stabdump(sb, f.builtin, ind + 1)
 	stabdump(sb, f.globls, ind + 1)
 
-	for s in f.dcls
+	for s : f.dcls
 		dcldump(sb, s, ind + 1)
 	;;
 }
@@ -217,7 +217,7 @@ const stabdump = {sb, st, ind
 
 	ifmt(sb, ind, "stab {} {{\n", st.ns)
 	keys = std.htkeys(st.syms)
-	for k in keys
+	for k : keys
 		match std.get(std.htget(st.syms, k))
 		| `Dcl d:	
 			ifmt(sb, ind + 1, "{} : {}\n", k, d.ty)
@@ -231,7 +231,7 @@ const stabdump = {sb, st, ind
 	std.slfree(keys)
 
 	keys = std.htkeys(st.types)
-	for k in keys
+	for k : keys
 		match std.get(std.htget(st.types, k))
 		| `Tyfwd _:	ifmt(sb, ind + 1, "type {} [PROTO]\n", k)
 		| `Tydef d:	ifmt(sb, ind + 1, "type {} = {}\n", k, d)
@@ -310,7 +310,7 @@ const traitlist = {sb, tr
 	var sep
 
 	sep = ""
-	for id in std.bybsvalue(tr)
+	for id : std.bybsvalue(tr)
 		std.sbfmt(sb, "{}{}", sep, traitdefs[id].name)
 		sep = ","
 	;;
@@ -327,7 +327,7 @@ const tynamedump = {sb, tn
 	if args.len > 0
 		sep = ""
 		std.sbfmt(sb, "(")
-		for p in tn.params
+		for p : tn.params
 			std.sbfmt(sb, "{}{}", sep, p)
 			sep = ", "
 		;;
@@ -343,7 +343,7 @@ const typaramdump = {sb, n, tr
 		std.sbfmt(sb, "::{}", tr[0])
 	elif tr.len > 1
 		sep = "::("
-		for t in tr
+		for t : tr
 			std.sbfmt(sb, "{}{}", sep, t)
 		;;
 		std.sbfmt(sb, ")")
@@ -357,7 +357,7 @@ const traitdefdump = {sb, ind, tr, isproto
 	if tr.aux.len > 0
 		std.sbfmt(sb, " ->")
 		sep = " "
-		for aux in tr.aux
+		for aux : tr.aux
 			std.sbfmt(sb, "{}{}", sep, aux)
 			sep = ", "
 		;;
@@ -369,7 +369,7 @@ const traitdefdump = {sb, ind, tr, isproto
 		std.sbfmt(sb, " =\n")
 	;;
 
-	for dcl in tr.dcls
+	for dcl : tr.dcls
 		dcldump(sb, dcl, ind + 1)
 	;;
 	ifmt(sb, ind, ";;\n")
@@ -380,7 +380,7 @@ const parendump = {sb, args, ret
 
 	sep = ""
 	std.sbputs(sb, "(")
-	for arg in args
+	for arg : args
 		std.sbputs(sb, sep)
 		tydefdump(sb, arg)
 		sep = ", "
@@ -400,7 +400,7 @@ const parendump = {sb, args, ret
 
 const structdump = {sb, dcls
 	std.sbfmt(sb, "struct\n")
-	for d in dcls
+	for d : dcls
 		std.sbfmt(sb, "{}\t: {}\n", d.name, d.ty)
 	;;
 	std.sbfmt(sb, ";;")
@@ -408,7 +408,7 @@ const structdump = {sb, dcls
 
 const uniondump = {sb, ucons
 	std.sbfmt(sb, "union\n")
-	for uc in ucons
+	for uc : ucons
 		std.sbfmt(sb, "`{} {}\n", uc.tag, uc.ety)
 	;;
 	std.sbfmt(sb, ";;")
@@ -432,7 +432,7 @@ const fndump = {sb, fn, ind
 	ifmt(sb, ind + 1, "loc: {}\n", fn.loc)
 	ifmt(sb, ind + 1, "type: {}\n", fn.ty)
 	ifmt(sb, ind + 1, "args: [\n")
-	for a in fn.args
+	for a : fn.args
 		dcldump(sb, a, ind + 2)
 	;;
 	ifmt(sb, ind + 1, "]\n")
@@ -446,7 +446,7 @@ const blkdump = {sb, blk, ind, showstab
 	if showstab
 		stabdump(sb, blk.stab, ind + 1)
 	;;
-	for s in blk.stmts
+	for s : blk.stmts
 		stmtdump(sb, s, ind + 1)
 		std.sbputs(sb, "\n")
 	;;
@@ -498,7 +498,7 @@ const ifdump = {sb, s, ind
 const matchdump = {sb, s, ind
 	ifmt(sb, ind, "Match\n")
 	ifmt(sb, ind + 1, "val: {}\n", s.val)
-	for c in s.cases
+	for c : s.cases
 		ifmt(sb, ind + 1, "pat: {}\n", c.pat)
 		ifmt(sb, ind + 1, "action:\n")
 		blkdump(sb, c.act, ind + 2, true)
