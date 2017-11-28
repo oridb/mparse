@@ -592,7 +592,7 @@ const npeekc = {ts, n
 
 	s = ts.rest
 	for var i = 0; i < n; i++
-		(c, s) = std.strstep(s)
+		(c, s) = std.charstep(s)
 	;;
 	-> std.decode(s)
 }
@@ -600,7 +600,7 @@ const npeekc = {ts, n
 const takec = {ts
 	var c, s
 
-	(c, s) = std.strstep(ts.rest)
+	(c, s) = std.charstep(ts.rest)
 	ts.rest = s
 	ts.loc.col++
 	-> c
@@ -611,7 +611,7 @@ const skipto = {ts, chr
 
 	s = ts.rest
 	while true
-		(c, s) = std.strstep(s)
+		(c, s) = std.charstep(s)
 		if s.len == 0 || c == chr
 			break
 		;;
@@ -622,7 +622,7 @@ const skipto = {ts, chr
 const matchc = {ts, chr
 	var c, s
 
-	(c, s) = std.strstep(ts.rest)
+	(c, s) = std.charstep(ts.rest)
 	if c == chr
 		ts.rest = s
 		-> true
