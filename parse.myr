@@ -1129,7 +1129,7 @@ const forstmt = {p
 	
 	match toknext(p)
 	| (l, `Tendln):	-> `std.Some `Nloop forsteploop(p, loc, init, st)
-	| (l, `Tin):	-> `std.Some `Niter foriterloop(p, loc, init, st)
+	| (l, `Tcolon):	-> `std.Some `Niter foriterloop(p, loc, init, st)
 	| (l, tokbad):	err(l, "invalid separator {} in for loop\n", tokbad)
 	;;
 }
