@@ -20,17 +20,17 @@ const __init__ = {
 	var blk : block
 	var loc : srcloc
 
-	std.fmtinstall(std.typeof(&f), fmtfile, [][:])
-	std.fmtinstall(std.typeof(&d), fmtdcl, [][:])
-	std.fmtinstall(std.typeof(&e), fmtexpr, [][:])
-	std.fmtinstall(std.typeof(&st), fmtstab, [][:])
-	std.fmtinstall(std.typeof(name), fmtname, [][:])
-	std.fmtinstall(std.typeof(&ty), fmttydef, [][:])
-	std.fmtinstall(std.typeof(&tr), fmttraitdef, [][:])
-	std.fmtinstall(std.typeof(&fn), fmtfn, [][:])
-	std.fmtinstall(std.typeof(&blk), fmtblk, [][:])
-	std.fmtinstall(std.typeof(lit), fmtlit, [][:])
-	std.fmtinstall(std.typeof(loc), fmtloc, [][:])
+	std.fmtinstall(std.typeof(&f), fmtfile)
+	std.fmtinstall(std.typeof(&d), fmtdcl)
+	std.fmtinstall(std.typeof(&e), fmtexpr)
+	std.fmtinstall(std.typeof(&st), fmtstab)
+	std.fmtinstall(std.typeof(name), fmtname)
+	std.fmtinstall(std.typeof(&ty), fmttydef)
+	std.fmtinstall(std.typeof(&tr), fmttraitdef)
+	std.fmtinstall(std.typeof(&fn), fmtfn)
+	std.fmtinstall(std.typeof(&blk), fmtblk)
+	std.fmtinstall(std.typeof(lit), fmtlit)
+	std.fmtinstall(std.typeof(loc), fmtloc)
 }
 
 const fmtfile = {sb, ap, opts

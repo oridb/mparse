@@ -105,7 +105,7 @@ const __init__ = {
 	var dummy : tok
 
 	dummy = `Terror
-	std.fmtinstall(std.typeof(dummy), tokfmt, [][:])
+	std.fmtinstall(std.typeof(dummy), tokfmt)
 }
 
 const tokfmt = {sb, ap, opts
