@@ -51,6 +51,7 @@ pkg mparse =
 		`Ttick    /* ` */
 		`Tderef   /* # */
 		`Tidxlen  /* $ */
+		`Tqmark   /* ? */
 	
 		`Ttype    /* type */
 		`Tfor     /* for */
@@ -161,6 +162,7 @@ const tokfmt = {sb, ap, opts
 	| `Ttick:	std.sbfmt(sb, "`")
 	| `Tderef:	std.sbfmt(sb, "#")
 	| `Tidxlen:	std.sbfmt(sb, "$")
+	| `Tqmark:	std.sbfmt(sb, "?")
 
 	| `Ttype:	std.sbfmt(sb, "type")
 	| `Tfor:	std.sbfmt(sb, "for")

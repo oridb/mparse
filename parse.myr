@@ -484,9 +484,30 @@ const retexpr = {p
 }
 
 const expr = {p
+	var exp, iftrue, iffalse
+
 	match prefixexpr(p)
-	| `std.Some e:	-> `std.Some exprcore(p, e, 0)
 	| `std.None:	-> `std.None
+	| `std.Some e:	exp = exprcore(p, e, 0)
+	;;
+	match tokpeek(p)
+	| (l, `Tqmark):
+		toknext(p)
+		match prefixexpr(p)
+		| `std.Some t:	iftrue = exprcore(p, t, 0)
+		| `std.None:	err(l, "expected expression after '?'\n")
+		;;
+		match tokpeek(p)
+		| (_, `Tcolon):	toknext(p)
+		| (m, tokbad):	err(m, "expected ':' in ternary expression")
+		;;
+		match prefixexpr(p)
+		| `std.Some f:	iffalse = exprcore(p, f, 0)
+		| `std.None:	err(l, "expected expression after '?'\n")
+		;;
+		-> `std.Some mkexpr(l, `Otern (exp, iftrue, iffalse))
+	| _:
+		-> `std.Some exp
 	;;
 }
 

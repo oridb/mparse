@@ -435,6 +435,7 @@ const oper = {ts
 	| '`': t = `Ttick
 	| '#': t = `Tderef
 	| '~': t = `Tbnot
+	| '?': t = `Tqmark
 	| ':':
 		if matchc(ts, ':')
 			t = `Twith

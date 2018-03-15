@@ -183,6 +183,7 @@ pkg mparse =
 		`Osize	tydef#
 		`Ocall	(expr#, expr#[:])
 		`Ocast	(expr#, tydef#)
+		`Otern	(expr#, expr#, expr#)
 		`Oret	expr#
 		`Ojmp	name
 		`Obreak
