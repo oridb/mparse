@@ -320,6 +320,7 @@ const number = {ts, base
 	buf = ts.rest
 	nbuf = 0
 	isfloat = false
+	v = -1
 	for var c = peekc(ts); std.isxdigit(c) || c == '.' || c == '_'; c = peekc(ts)
 		takec(ts)
 		if c == '_'

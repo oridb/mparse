@@ -855,6 +855,7 @@ const parenexpr = {p, loc
 	
 	/* opening ( already consumed */
 	istup = false
+	iscast = false
 	exprs = [][:]
 	ty = &[.ty=`Tyvoid] /* dummy */
 	while true
