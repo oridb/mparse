@@ -357,6 +357,7 @@ const number = {ts, base
 			issigned = false
 		;;
 
+		v = std.get(std.intparsebase(buf[:nbuf], base))
 		match peekc(ts)
 		| 'l':	takec(ts); bits = 64
 		| 'i':	takec(ts); bits = 32
@@ -364,7 +365,6 @@ const number = {ts, base
 		| 'b':	takec(ts); bits = 8
 		| _:	bits = minbits(v, issigned)
 		;;
-		v = std.get(std.intparsebase(buf[:nbuf], base))
 		/* guaranteed to be ok */
 		-> `Tintlit (v, bits, issigned)
 	;;
