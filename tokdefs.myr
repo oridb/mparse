@@ -40,6 +40,8 @@ pkg mparse =
 		`Tlor     /* || */
 		`Tland    /* && */
 		`Tlnot    /* ! */
+
+		`Tauto    /* auto */
 	
 		`Tobrace  /* { */
 		`Tcbrace  /* } */
@@ -151,6 +153,8 @@ const tokfmt = {sb, ap, opts
 	| `Tlor:	std.sbfmt(sb, "||")
 	| `Tland:	std.sbfmt(sb, "&&")
 	| `Tlnot:	std.sbfmt(sb, "!")
+
+	| `Tauto:	std.sbfmt(sb, "auto")
 
 	| `Tobrace:	std.sbfmt(sb, "{{")
 	| `Tcbrace:	std.sbfmt(sb, "}}")

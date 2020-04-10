@@ -391,6 +391,7 @@ const kwident = {ts
 	| "$": 	-> `Tidxlen
 	| "_": 	-> `Tgap
 	| "$noret": 	-> `Tnoret
+	| "auto":	-> `Tauto
 	| "break": 	-> `Tbreak
 	| "const": 	-> `Tconst
 	| "continue": 	-> `Tcont

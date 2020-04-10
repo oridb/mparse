@@ -164,6 +164,7 @@ const exprdump = {sb, e, ind
 	| [.e = `Obsl (a, b)]:	ifmt(sb, ind, "({} << {})", a, b)
 	| [.e = `Obsr (a, b)]:	ifmt(sb, ind, "({} >> {})", a, b)
 	| [.e = `Obnot exp]:	ifmt(sb, ind, "(~{})", exp)
+	| [.e = `Oauto exp]:	ifmt(sb, ind, "(auto {})", exp)
 	| [.e = `Opreinc exp]:	ifmt(sb, ind, "(++{})", exp)
 	| [.e = `Opostinc exp]:	ifmt(sb, ind, "({}++)", exp)
 	| [.e = `Opredec exp]:	ifmt(sb, ind, "(++{})", exp)
