@@ -77,6 +77,7 @@ const inferexpr = {st, e
 	| &[.e=`Obsl (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Obsr (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Obnot a]:	std.fatal("not: no inference for {}\n", e)
+	| &[.e=`Oauto a]:	std.fatal("not: no inference for {}\n", e)
 	| &[.e=`Opreinc a]:	inferincop(st, e, a)
 	| &[.e=`Opostinc a]:	inferincop(st, e, a)
 	| &[.e=`Opredec a]:	inferincop(st, e, a)

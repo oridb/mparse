@@ -656,6 +656,11 @@ const exprprec = {tok
 
 const prefixexpr = {p
 	match toknext(p)
+	| (l, `Tauto):
+		match prefixexpr(p)
+		| `std.Some e:	-> `std.Some mkexpr(l, `Oauto e)
+		| `std.None:	-> `std.None
+		;;
 	| (l, `Tinc):
 		match prefixexpr(p)
 		| `std.Some e:	-> `std.Some mkexpr(l, `Opreinc e)
