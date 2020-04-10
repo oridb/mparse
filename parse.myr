@@ -820,6 +820,7 @@ const callargs = {p
 	while true
 		match toknext(p)
 		| (l, `Tcomma):
+			optendlns(p)
 			match expr(p)
 			| `std.Some e:	std.slpush(&args, e)
 			| `std.None:	err(l, "expected expression after ',' in function args\n")
