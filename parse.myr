@@ -16,6 +16,8 @@ const file = {p
 	var f
 	var t : tok
 	var vis : vis = `Visintern
+	var isextern, isnoret, ispkglocal
+	var hadattr
 
 	/* initialize the parser and file state */
 	f = std.mk([
@@ -46,8 +48,15 @@ const file = {p
 		| (l, `Ttype):	tydefn(p)
 		| (l, `Tendln):	endlns(p)
 		| (l, tok):	
+			hadattr = dclattrs(p, &isextern, &isnoret, &ispkglocal)
 			match vardcls(p, true, vis)
-			| `std.Some d:	std.slfree(d)
+			| `std.Some dcls:
+				for d : dcls
+					d.isextern = isextern
+					d.isnoret = isnoret
+					d.ispkglocal = ispkglocal
+				;;
+				std.slfree(dcls)
 			| `std.None:	err(l, "invalid top level item near {}\n", tok)
 			;;
 		;;
@@ -71,6 +80,8 @@ const usestmt = {p
 
 const pkgdef = {f, p
 	var name
+	var isextern, isnoret, ispkglocal
+	var hadattr
 
 	match toknext(p)
 	| (l, `Tpkg):	/* ok */
@@ -90,6 +101,7 @@ const pkgdef = {f, p
 	setpkg(f, p.curstab, name)
 	p.curns = name
 	while true
+		hadattr = dclattrs(p, &isextern, &isnoret, &ispkglocal)
 		match tokpeek(p)
 		| (l, `Tendln):	endlns(p)
 		| (l, `Tuse):	usestmt(p)
@@ -101,7 +113,15 @@ const pkgdef = {f, p
 			break
 		| (l, tok):	
 			match vardcls(p, true, `Visexport)
-			| `std.Some d:	std.slfree(d)
+			| `std.Some dcls:
+				if hadattr
+					for d : dcls
+						d.isextern = isextern
+						d.isnoret = isnoret
+						d.ispkglocal = ispkglocal
+					;;
+				;;
+				std.slfree(dcls)
 			| `std.None:	err(l, "invalid export in package near {}\n", tok)
 			;;
 		;;
@@ -372,17 +392,12 @@ const tylist = {p
 
 const vardcls = {p, isglobl, vis
 	var dcl, dcls
-	var ispkglocal, isextern, isnoret, isconst, isgeneric
-	var hadattr
+	var isconst, isgeneric
 
 	dcls = [][:]
-	/* attributes */
 	isconst = false
 	isgeneric = false
-	isnoret = false
-	isextern = false
-	ispkglocal = false
-	hadattr = dclattrs(p, &isextern, &isnoret, &ispkglocal)
+
 	/* attributes (const | var) */
 	match tokpeek(p)
 	| (l, `Tvar):	isconst = false
@@ -390,12 +405,8 @@ const vardcls = {p, isglobl, vis
 	| (l, `Tgeneric):	
 		isconst = true
 		isgeneric = true
-	| (l, tokbad):
-		if hadattr
-			err(l, "unexpected {} in declaration, got {}\n", tokbad)
-		else
-			-> `std.None
-		;;
+	| (l, _):
+		-> `std.None
 	;;
 	toknext(p)
 
