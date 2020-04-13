@@ -404,7 +404,6 @@ const kwident = {ts
 	| "goto": 	-> `Tgoto
 	| "if": 	-> `Tif
 	| "impl": 	-> `Timpl
-	| "in": 	-> `Tin
 	| "match": 	-> `Tmatch
 	| "pkg": 	-> `Tpkg
 	| "pkglocal": 	-> `Tpkglocal
