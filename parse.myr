@@ -950,12 +950,12 @@ const structexpr = {p, loc
 		| `std.None:	err(asnloc, "expected expression after '=' in struct literal\n")
 		;;
 
+		std.slpush(&elts, (memb, val))
+
 		match tokpeek(p)
 		| (l, `Tcomma):	toknext(p)
 		| (l, _):	break
 		;;
-
-		std.slpush(&elts, (memb, val))
 	;;
 	optendlns(p)
 	match toknext(p)
@@ -1505,7 +1505,7 @@ const tystruct = {p, loc
 	/* 'struct' already consumed */
 	dcls = [][:]
 	while true
-		endlns(p)
+		optendlns(p)
 		match dclcore(p)
 		| `std.Some d:	std.slpush(&dcls, d)
 		| `std.None:	break
