@@ -323,7 +323,10 @@ const tydefn = {p
 	match toknext(p)
 	| (l, `Tasn):
 		match typ(p)
-		| `std.Some t:	ty = `std.Some t
+		| `std.Some t:
+			var n = mkname([.ns=p.curns, .name=name], params)
+			n.def = t
+			ty = `std.Some mkty(loc, `Tyname n)
 		| `std.None:	err(l, "expected type definition after 'type {} ='\n", name)
 		;;
 	| (l, `Tendln):
