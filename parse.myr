@@ -918,11 +918,19 @@ const parenexpr = {p, loc
 const sqbracexpr = {p, loc
 	/* opening [ already consumed */
 	optendlns(p)
-	match tokpeekt(p)
-	| `Tdot:
-		-> structexpr(p, loc)
-	| _:
-		-> arrayexpr(p, loc)
+	match tokpeek(p)
+	| (l, `Tdot):
+		toknext(p)
+		match tokpeek(p)
+		| (_, `Tosqbrac):
+			-> arrayexpr(p, l)
+		| (_, `Tident _):
+			-> structexpr(p, l)
+		| _:
+			err(l, "expected an array index or struct field\n")
+		;;
+	| (l, _):
+		-> arrayexpr(p, l)
 	;;
 }
 
@@ -932,12 +940,6 @@ const structexpr = {p, loc
 
 	elts = [][:]
 	while true
-		optendlns(p)
-		match tokpeek(p)
-		| (l, `Tdot):	toknext(p)
-		| (l, _):	break
-		;;
-
 		match toknext(p)
 		| (l, `Tident n):	memb = n
 		| (l, tokbad):	err(l, "expected '.member' in struct literal\n")
@@ -959,6 +961,12 @@ const structexpr = {p, loc
 		| (l, `Tcomma):	toknext(p)
 		| (l, _):	break
 		;;
+
+		optendlns(p)
+		match tokpeek(p)
+		| (l, `Tdot):	toknext(p)
+		| (l, _):	break
+		;;
 	;;
 	optendlns(p)
 	match toknext(p)
@@ -969,32 +977,58 @@ const structexpr = {p, loc
 }
 
 const arrayexpr = {p, loc
-	var elts, a, b
+	var elts, a
 	elts = [][:]
+
+	/* open [ is consumed by caller */
 	while true
-		optendlns(p)
-		match expr(p)
-		| `std.Some e:	a = e
-		| `std.None:	break
-		;;
-
-		optendlns(p)
-		match tokpeek(p)
-		| (l, `Tcolon):
-			toknext(p)
+		match toknext(p)
+		| (l, `Tosqbrac):
 			match expr(p)
-			| `std.Some e:	b = e
-			| `std.None:	err(l, "expected expression after ':'\n")
+			| `std.Some	e: a = e
+			| `std.None:	err(l, "expected index expression after .[\n")
 			;;
-			std.slpush(&elts, (`std.Some a, b))
-		| (l, _):
-			std.slpush(&elts, (`std.None, a))
-		;;
 
-		optendlns(p)
-		match tokpeek(p)
-		| (l, `Tcomma):	toknext(p)
-		| (l, _):	break
+			match toknext(p)
+			| (_, `Tcsqbrac):
+			| _:
+				err(l, "expected ] after .[{}\n", a)
+			;;
+
+			match toknext(p)
+			| (_, `Tasn):
+			| (_, _):	err(l, "expected = after .[{}]\n", a)
+			;;
+
+			match expr(p)
+			| `std.Some e:
+				std.slpush(&elts, (`std.Some a, e))
+			| `std.None:
+				err(l, "expected expression after =")
+			;;
+
+			match tokpeek(p)
+			| (_, `Tcomma):	toknext(p)
+			| _:	break
+			;;
+			optendlns(p)
+
+			match tokpeek(p)
+			| (_, `Tdot):	toknext(p)
+			| _:	break
+			;;
+		| (l, _):
+			match expr(p)
+			| `std.Some e:
+				std.slpush(&elts, (`std.None, e))
+			| `std.None:
+			;;
+
+			match tokpeek(p)
+			| (_, `Tcomma):	toknext(p)
+			| _:	break
+			;;
+			optendlns(p)
 		;;
 	;;
 
