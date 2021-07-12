@@ -40,6 +40,8 @@ pkg mparse =
 		`Tlor     /* || */
 		`Tland    /* && */
 		`Tlnot    /* ! */
+
+		`Tauto    /* auto */
 	
 		`Tobrace  /* { */
 		`Tcbrace  /* } */
@@ -55,7 +57,6 @@ pkg mparse =
 	
 		`Ttype    /* type */
 		`Tfor     /* for */
-		`Tin      /* in */
 		`Twhile   /* while */
 		`Tif      /* if */
 		`Telse    /* else */
@@ -152,6 +153,8 @@ const tokfmt = {sb, ap, opts
 	| `Tland:	std.sbfmt(sb, "&&")
 	| `Tlnot:	std.sbfmt(sb, "!")
 
+	| `Tauto:	std.sbfmt(sb, "auto")
+
 	| `Tobrace:	std.sbfmt(sb, "{{")
 	| `Tcbrace:	std.sbfmt(sb, "}}")
 	| `Toparen:	std.sbfmt(sb, "(")
@@ -166,7 +169,6 @@ const tokfmt = {sb, ap, opts
 
 	| `Ttype:	std.sbfmt(sb, "type")
 	| `Tfor:	std.sbfmt(sb, "for")
-	| `Tin:		std.sbfmt(sb, "in")
 	| `Twhile:	std.sbfmt(sb, "while")
 	| `Tif:		std.sbfmt(sb, "if")
 	| `Telse:	std.sbfmt(sb, "else")

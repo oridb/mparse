@@ -77,6 +77,7 @@ const inferexpr = {st, e
 	| &[.e=`Obsl (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Obsr (a, b)]:	inferbinop(st, e, a, b, "integer")
 	| &[.e=`Obnot a]:	std.fatal("not: no inference for {}\n", e)
+	| &[.e=`Oauto a]:	std.fatal("not: no inference for {}\n", e)
 	| &[.e=`Opreinc a]:	inferincop(st, e, a)
 	| &[.e=`Opostinc a]:	inferincop(st, e, a)
 	| &[.e=`Opredec a]:	inferincop(st, e, a)
@@ -109,6 +110,7 @@ const inferexpr = {st, e
 	| &[.e=`Osize a]:	std.fatal("size: no inference for {}\n", e)
 	| &[.e=`Ocall (a, args)]:	std.fatal("call: no inference for {}\n", e)
 	| &[.e=`Ocast (a, ty)]:	std.fatal("cast: no inference for {}\n", e)
+	| &[.e=`Otern (a, b, c)]: inferternop(st, e, a, b, c)
 	| &[.e=`Oret a]:	std.fatal("ret: no inference for {}\n", e)
 	| &[.e=`Ojmp name]:	std.fatal("jmp: no inference for {}\n", e)
 	| &[.e=`Obreak]:	std.fatal("break: no inference for {}\n", e)
@@ -184,6 +186,15 @@ const inferbinop = {st, e, a, b, traits
 	inferexpr(st, b)
 	unify(st, a.ty, b.ty)
 	unify(st, e.ty, a.ty)
+}
+
+const inferternop = {st, e, a, b, c
+	inferexpr(st, a)
+	inferexpr(st, b)
+	inferexpr(st, c)
+	unify(st, a.ty, Tybool)
+	unify(st, b.ty, c.ty)
+	unify(st, e.ty, b.ty)
 }
 
 const inferincop = {st, e, val

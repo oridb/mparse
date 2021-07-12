@@ -16,6 +16,8 @@ const file = {p
 	var f
 	var t : tok
 	var vis : vis = `Visintern
+	var isextern, isnoret, ispkglocal
+	var hadattr
 
 	/* initialize the parser and file state */
 	f = std.mk([
@@ -46,8 +48,15 @@ const file = {p
 		| (l, `Ttype):	tydefn(p)
 		| (l, `Tendln):	endlns(p)
 		| (l, tok):	
+			hadattr = dclattrs(p, &isextern, &isnoret, &ispkglocal)
 			match vardcls(p, true, vis)
-			| `std.Some d:	std.slfree(d)
+			| `std.Some dcls:
+				for d : dcls
+					d.isextern = isextern
+					d.isnoret = isnoret
+					d.ispkglocal = ispkglocal
+				;;
+				std.slfree(dcls)
 			| `std.None:	err(l, "invalid top level item near {}\n", tok)
 			;;
 		;;
@@ -71,6 +80,8 @@ const usestmt = {p
 
 const pkgdef = {f, p
 	var name
+	var isextern, isnoret, ispkglocal
+	var hadattr
 
 	match toknext(p)
 	| (l, `Tpkg):	/* ok */
@@ -90,6 +101,7 @@ const pkgdef = {f, p
 	setpkg(f, p.curstab, name)
 	p.curns = name
 	while true
+		hadattr = dclattrs(p, &isextern, &isnoret, &ispkglocal)
 		match tokpeek(p)
 		| (l, `Tendln):	endlns(p)
 		| (l, `Tuse):	usestmt(p)
@@ -101,7 +113,15 @@ const pkgdef = {f, p
 			break
 		| (l, tok):	
 			match vardcls(p, true, `Visexport)
-			| `std.Some d:	std.slfree(d)
+			| `std.Some dcls:
+				if hadattr
+					for d : dcls
+						d.isextern = isextern
+						d.isnoret = isnoret
+						d.ispkglocal = ispkglocal
+					;;
+				;;
+				std.slfree(dcls)
 			| `std.None:	err(l, "invalid export in package near {}\n", tok)
 			;;
 		;;
@@ -136,6 +156,15 @@ const traitdef = {p
 		auxty = tylist(p)
 	| _:
 		auxty = [][:]
+	;;
+
+	match tokpeek(p)
+	| (l, `Twith):
+		match traitspec(p)
+		| `std.Some specs:
+		| `std.None:
+		;;
+	| _:
 	;;
 
 	match tokpeek(p)
@@ -224,6 +253,11 @@ const impldef = {p
 		auxty = tylist(p)
 	| _:
 		auxty = [][:]
+	;;
+
+	match traitspec(p)
+	| `std.Some specs:
+	| `std.None:
 	;;
 
 	match tokpeek(p)
@@ -361,17 +395,12 @@ const tylist = {p
 
 const vardcls = {p, isglobl, vis
 	var dcl, dcls
-	var ispkglocal, isextern, isnoret, isconst, isgeneric
-	var hadattr
+	var isconst, isgeneric
 
 	dcls = [][:]
-	/* attributes */
 	isconst = false
 	isgeneric = false
-	isnoret = false
-	isextern = false
-	ispkglocal = false
-	hadattr = dclattrs(p, &isextern, &isnoret, &ispkglocal)
+
 	/* attributes (const | var) */
 	match tokpeek(p)
 	| (l, `Tvar):	isconst = false
@@ -379,12 +408,8 @@ const vardcls = {p, isglobl, vis
 	| (l, `Tgeneric):	
 		isconst = true
 		isgeneric = true
-	| (l, tokbad):
-		if hadattr
-			err(l, "unexpected {} in declaration, got {}\n", tokbad)
-		else
-			-> `std.None
-		;;
+	| (l, _):
+		-> `std.None
 	;;
 	toknext(p)
 
@@ -409,6 +434,15 @@ const vardcls = {p, isglobl, vis
 		match tokpeek(p)
 		| (_, `Tcomma):	toknext(p)
 		| (_, _):	break
+		;;
+	;;
+
+	if isgeneric
+		match traitspec(p)
+		| `std.Some specs:
+			for d : dcls
+			;;
+		| `std.None:
 		;;
 	;;
 	-> `std.Some dcls
@@ -636,6 +670,11 @@ const exprprec = {tok
 
 const prefixexpr = {p
 	match toknext(p)
+	| (l, `Tauto):
+		match prefixexpr(p)
+		| `std.Some e:	-> `std.Some mkexpr(l, `Oauto e)
+		| `std.None:	-> `std.None
+		;;
 	| (l, `Tinc):
 		match prefixexpr(p)
 		| `std.Some e:	-> `std.Some mkexpr(l, `Opreinc e)
@@ -795,6 +834,7 @@ const callargs = {p
 	while true
 		match toknext(p)
 		| (l, `Tcomma):
+			optendlns(p)
 			match expr(p)
 			| `std.Some e:	std.slpush(&args, e)
 			| `std.None:	err(l, "expected expression after ',' in function args\n")
@@ -1053,6 +1093,16 @@ const funcexpr = {p, loc
 	| (l, `Tret):	(ty, args) = funcargs(p)
 	| (l, `Tendln):	ty = mkty(loc, `Tyfunc std.sldup([mktyvar(loc)][:]))	/* (-> $t) */
 	| (l, tokbad):	err(l, "expected function arguments near {}\n", tokbad)
+	;;
+
+	match tokpeek(p)
+	| (l, `Twith):
+		match traitspec(p)
+		| `std.Some specs:
+		| `std.None:
+		;;
+	| (l, `Tendln):
+	| _:
 	;;
 
 	blk = blkbody(p, st)
@@ -1468,7 +1518,7 @@ const typ = {p
 	| (l, `Toparen):	ty = typaren(p, l)
 	| (l, `Tellipsis):	ty = mkty(l, `Tyvalist)
 	| (l, `Tvoidlit):	ty = mkty(l, `Tyvoid)
-	| (l, `Ttyparam n):	ty = typaramtail(p, l, n)
+	| (l, `Ttyparam n):     ty = mkty(l, `Typaram (n, [][:]))
 	| (l, `Tident id):
 		tokunget(p)
 		ty = tyname(p)
@@ -1484,40 +1534,76 @@ const typaram = {p
 	match tokpeek(p)
 	| (l, `Ttyparam n):
 		toknext(p)
-		-> `std.Some typaramtail(p, l, n)
+		-> `std.Some mkty(l, `Typaram (n, [][:]))
 	| (l, _):
 		-> `std.None
 	;;
 }
 
-const typaramtail = {p, loc, name
-	var traits
-
-	traits = [][:]
+const traitspec = {p
 	match tokpeek(p)
 	| (l, `Twith):
 		toknext(p)
-		traits = traitlist(p)
+		-> `std.Some traits(p)
 	| _:
+		-> `std.None
 	;;
-	-> mkty(loc, `Typaram (name, traits))
+}
+
+const traits = {p
+	var specs : (name[:], tydef#, tydef#[:])[:]
+
+	specs = [][:]
+	while true
+		match tokpeek(p)
+		| (l, `Tident id):
+			match traitvar(p)
+			| `std.Some tvar:
+				std.slpush(&specs, tvar)
+			| `std.None:
+				break
+			;;
+		| _: break
+		;;
+
+		match tokpeek(p)
+		| (l, `Tcomma): listsep(p)
+		| _:
+		;;
+	;;
+	-> specs
+}
+
+const traitvar = {p
+	var trs, param : tydef#, auxty
+
+	match traitlist(p)
+	| `std.Some list: trs = list
+	| `std.None: -> `std.None
+	;;
+	match typaram(p)
+	| `std.Some ty: param = ty
+	| `std.None: err(p.loc, "expected a type variable\n")
+	;;
+	match tokpeek(p)
+	| (l, `Tret):
+		toknext(p)
+		auxty = tylist(p)
+	| _:
+		auxty = [][:]
+	;;
+	-> `std.Some (trs, param, auxty)
 }
 
 const traitlist = {p
-	var traits
+	var trnames
 
-	traits = [][:]
+	trnames = [][:]
 	match tokpeek(p)
-	| (l, `Tident id):
-		match name(p)
-		| `std.Some n:	std.slpush(&traits, n)
-		| `std.None:	err(p.loc, "expected name in trait\n")
-		;;
-	| (_, `Toparen):
-		toknext(p)
+	| (_, `Tident id):
 		while true
 			match name(p)
-			| `std.Some n:	std.slpush(&traits, n)
+			| `std.Some n:	std.slpush(&trnames, n)
 			| `std.None:	err(p.loc, "expected name in trait list\n")
 			;;
 
@@ -1526,14 +1612,10 @@ const traitlist = {p
 			| (l, _):	break
 			;;
 		;;
-		match toknext(p)
-		| (l, `Tcparen):
-		| (l, tokbad):	err(l, "expected ')' ending trat list, got {}\n", tokbad)
-		;;
 	| (l, tokbad):
-		err(l, "expected traits after '::', got {}\n", tokbad)
+		-> `std.None
 	;;
-	-> traits
+	-> `std.Some trnames
 }
 
 const tystruct = {p, loc
@@ -1811,6 +1893,14 @@ const expectcsqbrac = {p, msg
 	| (l, `Tcsqbrac):	/* nothing */
 	| (l, tok):	err(l, "expected ']' in {}, got {}\n", msg, tok)
 	;;
+}
+
+const listsep = {p
+	match tokpeek(p)
+	| (l, `Tcomma): toknext(p)
+	| (l, tok): err(l, "expected ',', got {}\n", tok)
+	;;
+	optendlns(p)
 }
 
 const optendlns = {p

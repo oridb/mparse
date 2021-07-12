@@ -151,6 +151,7 @@ pkg mparse =
 		`Obsl	(expr#, expr#)
 		`Obsr	(expr#, expr#)
 		`Obnot	expr#
+		`Oauto		expr#
 		`Opreinc	expr#
 		`Opostinc	expr#
 		`Opredec	expr#
